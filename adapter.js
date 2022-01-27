@@ -146,7 +146,9 @@ export default function (bucketPrefix, aws) {
               ),
             )
             .chain((keys) =>
-              client.removeObjects({ bucket: namespacedBucket, keys })
+              keys.length
+                ? client.removeObjects({ bucket: namespacedBucket, keys })
+                : Async.Resolved()
             )
             .chain(() =>
               // https://doc.deno.land/https://aws-api.deno.dev/v0.3/services/s3.ts?docs=full/~/ListObjectsOutput#IsTruncated

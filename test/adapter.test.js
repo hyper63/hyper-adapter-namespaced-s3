@@ -215,6 +215,18 @@ test("removeBucket - remove a namespace and return the correct shape", async () 
   });
 });
 
+test("removeBucket - should not remove any objects if contents is empty", async () => {
+  s3.listObjects = spy(
+    resolves({ Contents: [] }),
+  );
+  s3.deleteObjects = spy(resolves());
+
+  const res = await adapter.removeBucket(existingNamespace);
+
+  assert(res.ok);
+  assert(s3.deleteObjects.calls.length === 0);
+});
+
 test("removeBucket - rejects if namespace doesn't exist", async () => {
   try {
     await adapter.removeBucket("no_foo");
