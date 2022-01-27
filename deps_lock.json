@@ -336,8 +336,10 @@
   "https://deno.land/x/aws_api@v0.6.0/client/instance-metadata.ts": "609c2e7405de9872bbf4d23b000d51b4eafdfde9edc6f8ab8a7d8c2920c72829",
   "https://deno.land/x/aws_api@v0.6.0/client/mod.ts": "6faaf88ec3cf92ccf651d4f823425532fd1fb4a3e20870e94eb3df6d2c44c965",
   "https://deno.land/x/aws_api@v0.6.0/client/signing.ts": "6465e0877e5cbbf467560fb7f666611689b2a15ce728f6f6286810c148e41063",
-  "https://deno.land/x/aws_api@v0.6.0/encoding/common.ts": "cb57892b2adaf1ee6c2a99d65bdac98a748aadcff299b452e612c19b6149821a",
   "https://deno.land/x/aws_api@v0.6.0/encoding/xml.ts": "0470b42ae0aada864f0fa829d74e6a68faa9e15df21987d74df7cc5150db6d94",
-  "https://deno.land/x/aws_api@v0.6.0/services/s3/mod.ts": "c41826b5d0b901c355d1ea35ced8bbd8331dc814a55f20f48a0fac69929e4c6b",
-  "https://deno.land/x/aws_api@v0.6.0/services/s3/structs.ts": "c70dc49c9c0a0208e01b62d141a483cf1cca115d9595b90485e37a4a8a5cf1a8"
+  "https://raw.githubusercontent.com/TillaTheHun0/deno-aws_api/fix/s3-delete-objects-missing-header/lib/client/common.ts": "e0cc6c3c4362716641c66e761c08b74112ba8f5c80fe1becb239ff4960dd9f61",
+  "https://raw.githubusercontent.com/TillaTheHun0/deno-aws_api/fix/s3-delete-objects-missing-header/lib/encoding/common.ts": "cb57892b2adaf1ee6c2a99d65bdac98a748aadcff299b452e612c19b6149821a",
+  "https://raw.githubusercontent.com/TillaTheHun0/deno-aws_api/fix/s3-delete-objects-missing-header/lib/encoding/xml.ts": "0470b42ae0aada864f0fa829d74e6a68faa9e15df21987d74df7cc5150db6d94",
+  "https://raw.githubusercontent.com/TillaTheHun0/deno-aws_api/fix/s3-delete-objects-missing-header/lib/services/s3/mod.ts": "177f9105006b45f780c5a28682a85f3460bb544581679a07561f1da28d311ab1",
+  "https://raw.githubusercontent.com/TillaTheHun0/deno-aws_api/fix/s3-delete-objects-missing-header/lib/services/s3/structs.ts": "c217b006b92840325f91ae14a5bc43421f0be2ae494904a36d16749e6bb87645"
 }
