@@ -200,6 +200,7 @@ export default function (bucketPrefix, aws) {
   function makeNamespace(name) {
     // will succeed if the bucket already exists
     return client.makeBucket(namespacedBucket)
+      .chain(() => checkName(name))
       .chain(getMeta)
       .chain((meta) =>
         checkNamespaceExists(meta, name)
@@ -290,8 +291,8 @@ export default function (bucketPrefix, aws) {
   async function putObject({ bucket, object, stream }) {
     const arrBuffer = await readAll(stream);
 
-    return Async.of(object)
-      .chain(checkName)
+    return checkName(bucket)
+      .chain(() => checkName(object))
       .chain(getMeta)
       .chain(
         (meta) => checkNamespaceExists(meta, bucket),
@@ -317,8 +318,8 @@ export default function (bucketPrefix, aws) {
    * @returns {Promise<ResponseOk>}
    */
   function removeObject({ bucket, object }) {
-    return Async.of(object)
-      .chain(checkName)
+    return checkName(bucket)
+      .chain(() => checkName(object))
       .chain(getMeta)
       .chain(
         (meta) => checkNamespaceExists(meta, bucket),
@@ -343,8 +344,8 @@ export default function (bucketPrefix, aws) {
    * @returns {Promise<Buffer>}
    */
   function getObject({ bucket, object }) {
-    return Async.of(object)
-      .chain(checkName)
+    return checkName(bucket)
+      .chain(() => checkName(object))
       .chain(getMeta)
       .chain(
         (meta) => checkNamespaceExists(meta, bucket),
@@ -369,8 +370,8 @@ export default function (bucketPrefix, aws) {
    * @returns {Promise<ResponseObjects>}
    */
   function listObjects({ bucket, prefix }) {
-    return Async.of(prefix)
-      .chain(checkName)
+    return checkName(bucket)
+      .chain(() => checkName(prefix))
       .chain(getMeta)
       .chain(
         (meta) => checkNamespaceExists(meta, bucket),

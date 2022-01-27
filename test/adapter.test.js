@@ -112,6 +112,19 @@ test("all - fail to get meta object and return correct shape", async () => {
   }
 });
 
+test("all - namespace is invalid name", async () => {
+  s3.createBucket = spy(resolves());
+
+  try {
+    await adapter.makeBucket("../uhoh/invalid-namespace");
+    assert(false);
+  } catch (err) {
+    console.log(err)
+    assertEquals(err.ok, false);
+    assertEquals(err.msg, "name cannot contain '..'");
+  }
+});
+
 test("removeBucket - remove a namespace and return the correct shape", async () => {
   s3.listObjects = spy(
     resolves({ Contents: [{ Key: "fizz/foo.jpg" }, { Key: "fizz/bar.png" }] }),
