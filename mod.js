@@ -21,6 +21,10 @@ export default (
   bucketPrefix,
   { awsAccessKeyId, awsSecretKey, region } = {},
 ) => {
+  if (!bucketPrefix || bucketPrefix.length > 32) {
+    throw new Error("bucketPrefix must a string 1-32 alphanumeric characters");
+  }
+
   const setPrefixOn = (obj) => assoc("prefix", __, obj); // expects object
   const setAwsCreds = (env) =>
     mergeRight(
