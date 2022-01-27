@@ -67,9 +67,10 @@ test("makeBucket - updates the meta document", async () => {
 
   await adapter.makeBucket("new");
 
-  assertObjectMatch(s3.putObject.calls.shift(), {
-    args: [{ Body: { new: { createdAt: new Date().toISOString() } } }],
-  });
+  const { Body } = s3.putObject.calls.shift().args.pop();
+
+  assert(Body.new.createdAt);
+  assert(!Body.new.deletedAt);
 });
 
 test("makeBucket - rejects if failed to create a bucket and return correct shape", async () => {
@@ -119,7 +120,6 @@ test("all - namespace is invalid name", async () => {
     await adapter.makeBucket("../uhoh/invalid-namespace");
     assert(false);
   } catch (err) {
-    console.log(err)
     assertEquals(err.ok, false);
     assertEquals(err.msg, "name cannot contain '..'");
   }
