@@ -10,8 +10,9 @@
 ---
 
 > **Note**: this adapter utilizes a **single S3 bucket** to store all objects,
-> across all hyper storage services, where each hyper Storage service is a prefix in that single bucket. This makes it a great option if you're
-> concerned about surpassing AWS'
+> across all hyper storage services, where each hyper Storage service is a
+> prefix in that single bucket. This makes it a great option if you're concerned
+> about surpassing AWS'
 > [S3 Bucket Count Restrictions](https://docs.aws.amazon.com/AmazonS3/latest/userguide/BucketRestrictions.html)
 > If you'd like an S3 bucket created for _each_ hyper Storage service created,
 > consider using the
