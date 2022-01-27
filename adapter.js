@@ -92,7 +92,8 @@ export default function (bucketPrefix, aws) {
    * @returns {object}
    */
   function getMeta() {
-    return Async.of()
+    // makeBucket is idempotent and will succeed even if bucket already exists
+    return client.makeBucket(namespacedBucket)
       .chain(() => client.getObject({ bucket: namespacedBucket, key: META }))
       /**
        * Find or create the meta.json object
@@ -182,7 +183,7 @@ export default function (bucketPrefix, aws) {
       .chain(ifElse(
         identity,
         Async.Resolved, // does exist
-        Async.Rejected, // does not exist
+        () => Async.Rejected("bucket does not exist"), // does not exist
       ));
   }
 
@@ -194,9 +195,7 @@ export default function (bucketPrefix, aws) {
    * @returns {Promise<ResponseMsg>}
    */
   function makeNamespace(name) {
-    // will succeed if the bucket already exists
-    return client.makeBucket(namespacedBucket)
-      .chain(() => checkName(name))
+    return checkName(name)
       .chain(getMeta)
       .chain((meta) =>
         checkNamespaceExists(meta, name)
