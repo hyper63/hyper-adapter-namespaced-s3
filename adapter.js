@@ -183,7 +183,7 @@ export default function (bucketPrefix, aws) {
       .chain(ifElse(
         identity,
         Async.Resolved, // does exist
-        () => Async.Rejected("bucket does not exist"), // does not exist
+        () => Async.Rejected({ status: 404, msg: "bucket does not exist" }), // does not exist
       ));
   }
 
@@ -209,16 +209,16 @@ export default function (bucketPrefix, aws) {
                 assoc(name, { [CREATED_AT]: new Date().toISOString() }, meta),
               ),
             // The namespace already exists
-            () => Async.Rejected("bucket already exists"),
+            () => Async.Rejected({ status: 409, msg: "bucket already exists" }),
           )
       )
       .chain(saveMeta)
       .bimap(
-        mapErr,
+        (err) => ({ msg: mapErr(err), status: err.status }),
         identity,
       )
       .bimap(
-        (msg) => ({ ok: false, msg }),
+        ({ status, msg }) => ({ ok: false, status, msg }),
         always({ ok: true }),
       ).toPromise();
   }
@@ -243,7 +243,7 @@ export default function (bucketPrefix, aws) {
       .chain((meta) =>
         checkNamespaceExists(meta, name)
           .bichain(
-            () => Async.Rejected("bucket does not exist"),
+            () => Async.Rejected({ status: 404, msg: "bucket does not exist" }),
             () => removeObjects(name),
           )
           .chain(
@@ -255,10 +255,10 @@ export default function (bucketPrefix, aws) {
           )
       )
       .bimap(
-        mapErr,
+        (err) => ({ msg: mapErr(err), status: err.status }),
         identity,
       ).bimap(
-        (msg) => ({ ok: false, msg }),
+        ({ status, msg }) => ({ ok: false, status, msg }),
         always({ ok: true }),
       ).toPromise();
   }
@@ -271,10 +271,10 @@ export default function (bucketPrefix, aws) {
       .map(dissoc(CREATED_AT))
       .map(keys)
       .bimap(
-        mapErr,
+        (err) => ({ msg: mapErr(err), status: err.status }),
         identity,
       ).bimap(
-        (msg) => ({ ok: false, msg }),
+        ({ status, msg }) => ({ ok: false, status, msg }),
         (bucketNamesArr) => ({ ok: true, buckets: bucketNamesArr }),
       ).toPromise();
   }
@@ -300,10 +300,10 @@ export default function (bucketPrefix, aws) {
         })
       )
       .bimap(
-        mapErr,
+        (err) => ({ msg: mapErr(err), status: err.status }),
         identity,
       ).bimap(
-        (msg) => ({ ok: false, msg }),
+        ({ status, msg }) => ({ ok: false, status, msg }),
         always({ ok: true }),
       ).toPromise();
   }
@@ -326,10 +326,10 @@ export default function (bucketPrefix, aws) {
         })
       )
       .bimap(
-        mapErr,
+        (err) => ({ msg: mapErr(err), status: err.status }),
         identity,
       ).bimap(
-        (msg) => ({ ok: false, msg }),
+        ({ status, msg }) => ({ ok: false, status, msg }),
         always({ ok: true }),
       ).toPromise();
   }
@@ -352,10 +352,10 @@ export default function (bucketPrefix, aws) {
         })
       )
       .bimap(
-        mapErr,
+        (err) => ({ msg: mapErr(err), status: err.status }),
         path(["Body", "buffer"]),
       ).bimap(
-        (msg) => ({ ok: false, msg }),
+        ({ status, msg }) => ({ ok: false, status, msg }),
         (arrayBuffer) => new Buffer(arrayBuffer),
       ).toPromise();
   }
@@ -378,13 +378,13 @@ export default function (bucketPrefix, aws) {
         })
       )
       .bimap(
-        mapErr,
+        (err) => ({ msg: mapErr(err), status: err.status }),
         compose(
           map(prop("Key")),
           prop("Contents"),
         ),
       ).bimap(
-        (msg) => ({ ok: false, msg }),
+        ({ status, msg }) => ({ ok: false, status, msg }),
         (objectNamesArr) => ({ ok: true, objects: objectNamesArr }),
       ).toPromise();
   }
