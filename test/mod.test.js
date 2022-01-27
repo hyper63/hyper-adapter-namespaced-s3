@@ -14,6 +14,12 @@ test("should be a valid schema", () => {
   assert(validateFactorySchema(factory));
 });
 
+test("should error if prefix is longer than 32 characters", () => {
+  assertThrows(
+    () => createFactory("aprefixlongerthan32characterswowthisisreallylong"),
+  );
+});
+
 test("should error if prefix is falsey", () => {
   assertThrows(
     () => createFactory(""),
