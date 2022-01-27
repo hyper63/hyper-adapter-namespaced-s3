@@ -15,6 +15,7 @@ const rejects = (val) => () => Promise.reject(val);
 const existingNamespace = "foo";
 // mock client
 const s3 = {
+  createBucket: () => Promise.resolve(),
   getObject: () => {
     return Promise.resolve({
       Body: new TextEncoder().encode(
@@ -25,6 +26,7 @@ const s3 = {
       ),
     });
   },
+  putObject: () => Promise.resolve(),
 };
 
 const adapter = adapterBuilder("foo", { s3 });
@@ -36,24 +38,21 @@ test("should implement the port", () => {
 });
 
 test("makeBucket - make a bucket and namespace and return the correct shape", async () => {
-  s3.createBucket = spy(resolves());
-  s3.putObject = spy(resolves());
-
   const res = await adapter.makeBucket("no_foo");
   assert(res.ok);
 });
 
 test("makeBucket - creates the meta document if it doesn't exist", async () => {
-  s3.createBucket = spy(resolves());
-  s3.putObject = spy(resolves());
-
   const original = s3.getObject;
   s3.getObject = () => Promise.reject(new Error("NoSuchKey - found"));
+  s3.putObject = spy(resolves());
 
   await adapter.makeBucket("no_foo");
 
   // first call is to create the meta object
-  const { Body } = s3.putObject.calls.shift().args.pop();
+  let { Body } = s3.putObject.calls.shift().args.pop();
+
+  Body = JSON.parse(Body);
 
   assert(Body.createdAt);
 
@@ -62,18 +61,20 @@ test("makeBucket - creates the meta document if it doesn't exist", async () => {
 });
 
 test("makeBucket - updates the meta document", async () => {
-  s3.createBucket = spy(resolves());
   s3.putObject = spy(resolves());
 
   await adapter.makeBucket("new");
 
-  const { Body } = s3.putObject.calls.shift().args.pop();
+  let { Body } = s3.putObject.calls.shift().args.pop();
+
+  Body = JSON.parse(Body);
 
   assert(Body.new.createdAt);
   assert(!Body.new.deletedAt);
 });
 
 test("makeBucket - rejects if failed to create a bucket and return correct shape", async () => {
+  const original = s3.createBucket;
   s3.createBucket = spy(rejects(new Error("foo")));
 
   try {
@@ -82,13 +83,11 @@ test("makeBucket - rejects if failed to create a bucket and return correct shape
   } catch (err) {
     assertEquals(err.ok, false);
     assertEquals(err.msg, "foo");
+    s3.createBucket = original;
   }
 });
 
 test("makeBucket - rejects if namespace already exists", async () => {
-  s3.createBucket = spy(resolves());
-  s3.putObject = spy(resolves());
-
   await adapter.makeBucket(existingNamespace).then(() => {
     assert(false);
   }).catch((err) => {
@@ -98,8 +97,6 @@ test("makeBucket - rejects if namespace already exists", async () => {
 });
 
 test("all - fail to get meta object and return correct shape", async () => {
-  s3.createBucket = spy(resolves());
-
   const original = s3.getObject;
   s3.getObject = spy(rejects(new Error("foo")));
 
@@ -114,8 +111,6 @@ test("all - fail to get meta object and return correct shape", async () => {
 });
 
 test("all - namespace is invalid name", async () => {
-  s3.createBucket = spy(resolves());
-
   try {
     await adapter.makeBucket("../uhoh/invalid-namespace");
     assert(false);
@@ -152,7 +147,9 @@ test("removeBucket - should update the meta, setting deletedAt for the namespace
 
   await adapter.removeBucket(existingNamespace);
 
-  const { Body } = s3.putObject.calls.shift().args.pop();
+  let { Body } = s3.putObject.calls.shift().args.pop();
+
+  Body = JSON.parse(Body);
 
   assert(Body[existingNamespace].createdAt);
   assert(Body[existingNamespace].deletedAt);

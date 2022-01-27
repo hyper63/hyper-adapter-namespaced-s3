@@ -102,13 +102,7 @@ export default function (bucketPrefix, aws) {
           return err.message.includes("NoSuchKey")
             // Create
             ? Async.of({ [CREATED_AT]: new Date().toISOString() })
-              .chain((meta) =>
-                client.putObject({
-                  bucket: namespacedBucket,
-                  key: META,
-                  body: meta,
-                }).map(() => meta)
-              )
+              .chain((meta) => saveMeta(meta).map(() => meta))
             : Async.Rejected(err); // Some other error
         },
         // Found
@@ -126,7 +120,7 @@ export default function (bucketPrefix, aws) {
     return client.putObject({
       bucket: namespacedBucket,
       key: META,
-      body: meta,
+      body: JSON.stringify(meta),
     });
   }
 
