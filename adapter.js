@@ -11,6 +11,7 @@ const {
   dissoc,
   keys,
   always,
+  filter,
   compose,
   pluck,
   prop,
@@ -269,6 +270,7 @@ export default function (bucketPrefix, aws) {
   function listNamespaces() {
     return getMeta()
       .map(dissoc(CREATED_AT))
+      .map(filter(notHas(DELETED_AT)))
       .map(keys)
       .bimap(
         (err) => ({ msg: mapErr(err), status: err.status }),

@@ -261,6 +261,10 @@ test("listBuckets - return the correct shape", async () => {
           createdAt: new Date().toISOString(),
           foo: { createdAt: new Date().toISOString() },
           bar: { createdAt: new Date().toISOString() },
+          fizz: {
+            createdAt: new Date().toISOString(),
+            deletedAt: new Date().toISOString(),
+          },
         }),
       ),
     });
