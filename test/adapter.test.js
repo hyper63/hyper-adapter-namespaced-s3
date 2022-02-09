@@ -27,6 +27,7 @@ const s3 = {
     });
   },
   putObject: () => Promise.resolve(),
+  getSignedUrl: (_method, _params, resolve) => resolve("https://foo.bar"),
 };
 
 const adapter = adapterBuilder("foo", { s3 });
@@ -301,6 +302,17 @@ test("putObject - return the correct shape", async () => {
   });
 
   assert(res.ok);
+});
+
+test("putObject (useSignedUrl) - return the correct shape", async () => {
+  const res = await adapter.putObject({
+    bucket: existingNamespace,
+    object: "bar.jpg",
+    useSignedUrl: true,
+  });
+
+  assert(res.ok);
+  assert(res.url);
 });
 
 test("all - passes the correct prefix", async () => {

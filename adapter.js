@@ -77,6 +77,7 @@ export default function (bucketPrefix, aws) {
     removeObject: Async.fromPromise(lib.removeObject(s3)),
     removeObjects: Async.fromPromise(lib.removeObjects(s3)),
     getObject: Async.fromPromise(lib.getObject(s3)),
+    getSignedUrl: Async.fromPromise(lib.getSignedUrl(s3)),
     listObjects: Async.fromPromise(lib.listObjects(s3)),
   };
 
@@ -188,6 +189,27 @@ export default function (bucketPrefix, aws) {
       ));
   }
 
+  function putObjectOrSignedUrl({ bucket, object, stream, useSignedUrl }) {
+    const key = createPrefix(bucket, object);
+
+    if (!useSignedUrl) {
+      return Async.of(stream)
+        .chain(Async.fromPromise(readAll))
+        .chain((arrBuffer) =>
+          client.putObject({
+            bucket: namespacedBucket,
+            key,
+            body: arrBuffer,
+          })
+        )
+        .map(always({ ok: true }));
+    }
+
+    return Async.of()
+      .chain(() => client.getSignedUrl({ bucket, key, method: "putObject" })) // 5 min expiration
+      .map((url) => ({ ok: true, url }));
+  }
+
   /**
    * Create a namespace (prefix/folder) within the s3 bucket
    * recording it's existence in the meta file
@@ -285,9 +307,7 @@ export default function (bucketPrefix, aws) {
    * @param {PutObjectArgs}
    * @returns {Promise<ResponseOk>}
    */
-  async function putObject({ bucket, object, stream }) {
-    const arrBuffer = await readAll(stream);
-
+  function putObject({ bucket, object, stream, useSignedUrl }) {
     return checkName(bucket)
       .chain(() => checkName(object))
       .chain(getMeta)
@@ -295,18 +315,11 @@ export default function (bucketPrefix, aws) {
         (meta) => checkNamespaceExists(meta, bucket),
       )
       .chain(() =>
-        client.putObject({
-          bucket: namespacedBucket,
-          key: createPrefix(bucket, object),
-          body: arrBuffer,
-        })
+        putObjectOrSignedUrl({ bucket, object, stream, useSignedUrl })
       )
       .bimap(
-        (err) => ({ msg: mapErr(err), status: err.status }),
+        (err) => ({ ok: false, msg: mapErr(err), status: err.status }),
         identity,
-      ).bimap(
-        ({ status, msg }) => ({ ok: false, status, msg }),
-        always({ ok: true }),
       ).toPromise();
   }
 

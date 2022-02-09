@@ -7,6 +7,7 @@ import {
 
 import {
   getObject,
+  getSignedUrl,
   listBuckets,
   listObjects,
   makeBucket,
@@ -94,6 +95,22 @@ test("getObject - should pass correct shape", async () => {
   assertObjectMatch(s3.getObject.calls.shift(), {
     args: [{ Bucket: bucket, Key: key }],
   });
+});
+
+test("getSignedUrl - should pass correct shape", async () => {
+  const bucket = "buck";
+  const key = "foo.jpg";
+  const method = "putObject";
+  const expires = 60 * 5;
+
+  s3.getSignedUrl = spy((_method, _params, resolve) => resolve());
+
+  await getSignedUrl(s3)({ bucket, key, method, expires }).catch(console.error);
+
+  const { args } = s3.getSignedUrl.calls.shift();
+
+  assertEquals(args[0], method);
+  assertObjectMatch(args[1], { Bucket: bucket, Key: key, Expires: expires });
 });
 
 test("listObjects - should pass correct shape", async () => {
