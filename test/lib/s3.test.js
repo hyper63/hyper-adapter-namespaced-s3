@@ -100,17 +100,36 @@ test("getObject - should pass correct shape", async () => {
 test("getSignedUrl - should pass correct shape", async () => {
   const bucket = "buck";
   const key = "foo.jpg";
-  const method = "putObject";
+  const method = "PUT";
   const expires = 60 * 5;
 
-  s3.getSignedUrl = spy((_method, _params, resolve) => resolve());
+  s3.getSignedUrl = spy(resolves());
 
-  await getSignedUrl(s3)({ bucket, key, method, expires }).catch(console.error);
+  await getSignedUrl(s3)({
+    bucket,
+    key,
+    method,
+    expires,
+    credentials: {
+      awsAccessKeyId: "foo",
+      awsSecretKey: "secret",
+      sessionToken: "token",
+      region: "us-east-1",
+    },
+  });
 
-  const { args } = s3.getSignedUrl.calls.shift();
-
-  assertEquals(args[0], method);
-  assertObjectMatch(args[1], { Bucket: bucket, Key: key, Expires: expires });
+  assertObjectMatch(s3.getSignedUrl.calls.shift(), {
+    args: [{
+      accessKeyId: "foo",
+      secretAccessKey: "secret",
+      sessionToken: "token",
+      region: "us-east-1",
+      bucketName: bucket,
+      objectPath: `/${key}`,
+      expiresIn: expires,
+      method,
+    }],
+  });
 });
 
 test("listObjects - should pass correct shape", async () => {

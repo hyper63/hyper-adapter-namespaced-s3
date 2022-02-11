@@ -12,7 +12,7 @@ export {
   assertEquals,
   assertObjectMatch,
   assertThrows,
-} from "https://deno.land/std@0.122.0/testing/asserts.ts";
+} from "https://deno.land/std@0.125.0/testing/asserts.ts";
 
 export { spy } from "https://deno.land/x/mock@0.12.2/mod.ts";
 export { cuid } from "https://deno.land/x/cuid@v1.0.0/index.js";

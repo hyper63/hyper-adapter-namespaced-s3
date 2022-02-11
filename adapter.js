@@ -68,7 +68,9 @@ const [META, CREATED_AT, DELETED_AT] = ["meta.json", "createdAt", "deletedAt"];
  * @returns
  */
 export default function (bucketPrefix, aws) {
-  const { s3 } = aws;
+  const { s3, getSignedUrl, credentialProvider } = aws;
+
+  const getCredentials = Async.fromPromise(credentialProvider.getCredentials);
 
   const client = {
     makeBucket: Async.fromPromise(lib.makeBucket(s3)),
@@ -77,7 +79,7 @@ export default function (bucketPrefix, aws) {
     removeObject: Async.fromPromise(lib.removeObject(s3)),
     removeObjects: Async.fromPromise(lib.removeObjects(s3)),
     getObject: Async.fromPromise(lib.getObject(s3)),
-    getSignedUrl: Async.fromPromise(lib.getSignedUrl(s3)),
+    getSignedUrl: Async.fromPromise(lib.getSignedUrl({ getSignedUrl })),
     listObjects: Async.fromPromise(lib.listObjects(s3)),
   };
 
@@ -206,7 +208,10 @@ export default function (bucketPrefix, aws) {
     }
 
     return Async.of()
-      .chain(() => client.getSignedUrl({ bucket, key, method: "putObject" })) // 5 min expiration
+      .chain(getCredentials)
+      .chain((credentials) =>
+        client.getSignedUrl({ bucket, key, method: "PUT", credentials })
+      )
       .map((url) => ({ ok: true, url }));
   }
 

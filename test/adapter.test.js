@@ -27,10 +27,23 @@ const s3 = {
     });
   },
   putObject: () => Promise.resolve(),
-  getSignedUrl: (_method, _params, resolve) => resolve("https://foo.bar"),
 };
 
-const adapter = adapterBuilder("foo", { s3 });
+const credentialProvider = {
+  getCredentials: () =>
+    Promise.resolve({
+      awsAccessKeyId: "foo",
+      awsSecretKey: "secret",
+      sessionToken: "token",
+      region: "us-east-1",
+    }),
+};
+
+const adapter = adapterBuilder("foo", {
+  s3,
+  credentialProvider,
+  getSignedUrl: () => Promise.resolve("https://foo.bar"),
+});
 
 const { test } = Deno;
 

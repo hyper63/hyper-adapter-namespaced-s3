@@ -85,7 +85,16 @@ test("load - should default the region to us-east-1", async () => {
 
 test("link - should return an adapter", () => {
   const factory = createFactory("foo");
-  const adapter = factory.link({ prefix: "foo", aws: { s3: {} } })();
+  const adapter = factory.link({
+    prefix: "foo",
+    aws: {
+      s3: {},
+      credentialProvider: {
+        getCredentials: () => Promise.resolve(),
+      },
+      getSignedUrl: () => Promise.resolve(),
+    },
+  })();
 
   assert(adapter);
   assertEquals(typeof adapter, "object");
