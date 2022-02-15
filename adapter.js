@@ -210,7 +210,12 @@ export default function (bucketPrefix, aws) {
     return Async.of()
       .chain(getCredentials)
       .chain((credentials) =>
-        client.getSignedUrl({ bucket, key, method: "PUT", credentials })
+        client.getSignedUrl({
+          bucket: namespacedBucket,
+          key,
+          method: "PUT",
+          credentials,
+        })
       )
       .map((url) => ({ ok: true, url }));
   }
