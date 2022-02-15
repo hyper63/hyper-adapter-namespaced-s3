@@ -1,4 +1,12 @@
-import { ApiFactory, AwsEndpointResolver, crocks, R, S3 } from "./deps.js";
+import {
+  ApiFactory,
+  AwsEndpointResolver,
+  crocks,
+  DefaultCredentialsProvider,
+  getSignedUrl,
+  R,
+  S3,
+} from "./deps.js";
 
 import createAdapter from "./adapter.js";
 import PORT_NAME from "./port_name.js";
@@ -40,36 +48,53 @@ export default (
       { region: "us-east-1" },
       env,
     );
+
+  const createCredentialProvider = (env) =>
+    over(
+      lensProp("credentialProvider"),
+      /**
+       * Either use provided credentials or use the DefaultCredentialsProvider
+       * from AWS deno sdk, merging in this adapters defualt region
+       */
+      () =>
+        (env.awsAccessKeyId && env.awsSecretKey && env.region)
+          ? { getCredentials: () => Promise.resolve(env) }
+          : {
+            ...DefaultCredentialsProvider,
+            getCredentials: () =>
+              DefaultCredentialsProvider.getCredentials()
+                .then(mergeRight(
+                  { region: "us-east-1" }, // add default region if not provided
+                )),
+          },
+      env,
+    );
+
   const createFactory = (env) =>
     over(
       lensProp("factory"),
+      /**
+       * Disable using Dualstack endpoints, so this adapter will use VPC Gateway endpoint when used within a VPC
+       * - For lib api, see https://github.com/cloudydeno/deno-aws_api/blob/3afef9fe3aaef842fd3a19245593494c3705a1dd/lib/client/endpoints.ts#L19
+       * - For Dualstack description https://docs.aws.amazon.com/AmazonS3/latest/userguide/dual-stack-endpoints.html#dual-stack-endpoints-description
+       */
       () =>
-        (env.awsAccessKeyId && env.awsSecretKey && env.region)
-          /**
-           * Disable using Dualstack endpoints, so this adapter will use VPC Gateway endpoint when used within a VPC
-           * - For lib api, see https://github.com/cloudydeno/deno-aws_api/blob/3afef9fe3aaef842fd3a19245593494c3705a1dd/lib/client/endpoints.ts#L19
-           * - For Dualstack description https://docs.aws.amazon.com/AmazonS3/latest/userguide/dual-stack-endpoints.html#dual-stack-endpoints-description
-           */
-          ? new ApiFactory({
-            credentials: env,
-            endpointResolver: new AwsEndpointResolver({ useDualstack: false }),
-          })
-          : /**
-           * ApiFactory attempts to pull credentials from multiple environment places
-           * If not provided via constructor
-           * See https://github.com/cloudydeno/deno-aws_api/blob/2b8605516802c1b790a2b112c03b790feb3bf58f/lib/client/credentials.ts#L50
-           */
-            new ApiFactory({
-              endpointResolver: new AwsEndpointResolver({
-                useDualstack: false,
-              }),
-            }),
+        new ApiFactory({
+          credentialProvider: env.credentialProvider,
+          endpointResolver: new AwsEndpointResolver({ useDualstack: false }),
+        }),
       env,
     );
+
   const setAws = (env) =>
     over(
       lensProp("aws"),
-      () => ({ factory: env.factory, s3: new S3(env.factory) }),
+      () => ({
+        factory: env.factory,
+        credentialProvider: env.credentialProvider,
+        s3: new S3(env.factory),
+        getSignedUrl,
+      }),
       env,
     );
 
@@ -85,6 +110,7 @@ export default (
           notIsNil(bucketPrefix)
             .map(setPrefixOn(env))
         )
+        .map(createCredentialProvider)
         .map(createFactory)
         .map(setAws)
         .either(

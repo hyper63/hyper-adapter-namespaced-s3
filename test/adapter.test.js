@@ -29,7 +29,21 @@ const s3 = {
   putObject: () => Promise.resolve(),
 };
 
-const adapter = adapterBuilder("foo", { s3 });
+const credentialProvider = {
+  getCredentials: () =>
+    Promise.resolve({
+      awsAccessKeyId: "foo",
+      awsSecretKey: "secret",
+      sessionToken: "token",
+      region: "us-east-1",
+    }),
+};
+
+const adapter = adapterBuilder("foo", {
+  s3,
+  credentialProvider,
+  getSignedUrl: () => Promise.resolve("https://foo.bar"),
+});
 
 const { test } = Deno;
 
@@ -301,6 +315,17 @@ test("putObject - return the correct shape", async () => {
   });
 
   assert(res.ok);
+});
+
+test("putObject (useSignedUrl) - return the correct shape", async () => {
+  const res = await adapter.putObject({
+    bucket: existingNamespace,
+    object: "bar.jpg",
+    useSignedUrl: true,
+  });
+
+  assert(res.ok);
+  assert(res.url);
 });
 
 test("all - passes the correct prefix", async () => {

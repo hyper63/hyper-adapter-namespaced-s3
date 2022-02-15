@@ -7,6 +7,7 @@ import {
 
 import {
   getObject,
+  getSignedUrl,
   listBuckets,
   listObjects,
   makeBucket,
@@ -93,6 +94,41 @@ test("getObject - should pass correct shape", async () => {
 
   assertObjectMatch(s3.getObject.calls.shift(), {
     args: [{ Bucket: bucket, Key: key }],
+  });
+});
+
+test("getSignedUrl - should pass correct shape", async () => {
+  const bucket = "buck";
+  const key = "foo.jpg";
+  const method = "PUT";
+  const expires = 60 * 5;
+
+  s3.getSignedUrl = spy(resolves());
+
+  await getSignedUrl(s3)({
+    bucket,
+    key,
+    method,
+    expires,
+    credentials: {
+      awsAccessKeyId: "foo",
+      awsSecretKey: "secret",
+      sessionToken: "token",
+      region: "us-east-1",
+    },
+  });
+
+  assertObjectMatch(s3.getSignedUrl.calls.shift(), {
+    args: [{
+      accessKeyId: "foo",
+      secretAccessKey: "secret",
+      sessionToken: "token",
+      region: "us-east-1",
+      bucketName: bucket,
+      objectPath: `/${key}`,
+      expiresIn: expires,
+      method,
+    }],
   });
 });
 
