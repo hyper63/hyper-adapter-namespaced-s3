@@ -1,7 +1,9 @@
 // Load .env
 import "https://deno.land/x/dotenv@v2.0.0/load.ts";
+import { default as appOpine } from "https://x.nest.land/hyper-app-opine@1.3.0/mod.js";
+import { default as core } from "https://x.nest.land/hyper@2.1.1/mod.js";
+import { cuid } from "https://deno.land/x/cuid@v1.0.0/index.js";
 
-import { appOpine, core, cuid } from "../dev_deps.js";
 import myAdapter from "../mod.js";
 import PORT_NAME from "../port_name.js";
 

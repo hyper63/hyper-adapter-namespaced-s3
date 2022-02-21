@@ -87,7 +87,7 @@ test("makeBucket - updates the meta document", async () => {
   assert(!Body.new.deletedAt);
 });
 
-test("makeBucket - rejects if failed to create a bucket and return correct shape", async () => {
+test("makeBucket - rejects with Error if failed to create a bucket", async () => {
   const original = s3.createBucket;
   s3.createBucket = spy(rejects(new Error("foo")));
 
@@ -95,22 +95,20 @@ test("makeBucket - rejects if failed to create a bucket and return correct shape
     await adapter.makeBucket("bar");
     assert(false);
   } catch (err) {
-    assertEquals(err.ok, false);
-    assertEquals(err.msg, "foo");
+    assertEquals(err.message, "foo");
     s3.createBucket = original;
   }
 });
 
-test("makeBucket - rejects if namespace already exists", async () => {
-  await adapter.makeBucket(existingNamespace).then(() => {
-    assert(false);
-  }).catch((err) => {
-    assert(!err.ok);
-    assertEquals("bucket already exists", err.msg);
+test("makeBucket - resolves with HyperErr if namespace already exists", async () => {
+  await adapter.makeBucket(existingNamespace).then(({ ok, msg, status }) => {
+    assert(ok === false);
+    assertEquals("bucket already exists", msg);
+    assert(status === 409);
   });
 });
 
-test("all - fail to get meta object and return correct shape", async () => {
+test("all - rejects with Error if failed to get meta object", async () => {
   const original = s3.getObject;
   s3.getObject = spy(rejects(new Error("foo")));
 
@@ -118,20 +116,15 @@ test("all - fail to get meta object and return correct shape", async () => {
     await adapter.makeBucket("bar");
     assert(false);
   } catch (err) {
-    assertEquals(err.ok, false);
-    assertEquals(err.msg, "foo");
+    assertEquals(err.message, "foo");
     s3.getObject = original;
   }
 });
 
-test("all - namespace is invalid name", async () => {
-  try {
-    await adapter.makeBucket("../uhoh/invalid-namespace");
-    assert(false);
-  } catch (err) {
-    assertEquals(err.ok, false);
-    assertEquals(err.msg, "name cannot contain '..'");
-  }
+test("all - resolves with HyperErr if namespace is invalid name", async () => {
+  const err = await adapter.makeBucket("../uhoh/invalid-namespace");
+  assertEquals(err.ok, false);
+  assertEquals(err.msg, "name cannot contain '..'");
 });
 
 test("removeBucket - remove a namespace and return the correct shape", async () => {
@@ -241,17 +234,14 @@ test("removeBucket - should not remove any objects if contents is empty", async 
   assert(s3.deleteObjects.calls.length === 0);
 });
 
-test("removeBucket - rejects if namespace doesn't exist", async () => {
-  try {
-    await adapter.removeBucket("no_foo");
-    assert(false);
-  } catch (err) {
-    assertEquals(err.ok, false);
-    assertEquals(err.msg, "bucket does not exist");
-  }
+test("removeBucket - resolves with HyperErr if namespace doesn't exist", async () => {
+  const err = await adapter.removeBucket("no_foo");
+  assertEquals(err.ok, false);
+  assertEquals(err.msg, "bucket does not exist");
+  assertEquals(err.status, 404);
 });
 
-test("removeBucket - rejects if failed to remove namespace and return correct shape", async () => {
+test("removeBucket - rejects with Error if failed to remove namespace", async () => {
   s3.listObjects = spy(
     resolves({ Contents: [{ Key: "foo" }, { Key: "bar" }] }),
   );
@@ -261,8 +251,7 @@ test("removeBucket - rejects if failed to remove namespace and return correct sh
     await adapter.removeBucket(existingNamespace);
     assert(false);
   } catch (err) {
-    assertEquals(err.ok, false);
-    assertEquals(err.msg, "foo");
+    assertEquals(err.message, "foo");
   }
 });
 
@@ -291,7 +280,7 @@ test("listBuckets - return the correct shape", async () => {
   s3.getObject = original;
 });
 
-test("listBuckets - fail and return correct shape", async () => {
+test("listBuckets - rejects with Error if can't fetch meta to list buckets", async () => {
   const original = s3.getObject;
   s3.getObject = spy(rejects(new Error("foo")));
 
@@ -299,8 +288,7 @@ test("listBuckets - fail and return correct shape", async () => {
     await adapter.listBuckets("bar");
     assert(false);
   } catch (err) {
-    assertEquals(err.ok, false);
-    assertEquals(err.msg, "foo");
+    assertEquals(err.message, "foo");
     s3.getObject = original;
   }
 });
@@ -353,22 +341,20 @@ test("all - passes the correct prefix", async () => {
   });
 });
 
-test("all - reject if name is invalid", async () => {
+test("all - resolves with HyperErr if name is invalid", async () => {
   s3.putObject = spy(({ body }) => Promise.resolve(body));
 
-  await adapter.putObject({
+  const err = await adapter.putObject({
     bucket: existingNamespace,
     object: "/foo/bar/../bar.jpg",
     stream: new Buffer(new Uint8Array(4).buffer),
-  })
-    .then(() => assert(false))
-    .catch((err) => {
-      assert(!err.ok);
-      assert(typeof err.msg === "string");
-    });
+  });
+
+  assertEquals(err.ok, false);
+  assert(typeof err.msg === "string");
 });
 
-test("putObject - fail and return correct shape", async () => {
+test("putObject - rejects with Error if fail to putObject", async () => {
   s3.putObject = spy(rejects(new Error("foo")));
 
   try {
@@ -379,8 +365,7 @@ test("putObject - fail and return correct shape", async () => {
     });
     assert(false);
   } catch (err) {
-    assertEquals(err.ok, false);
-    assertEquals(err.msg, "foo");
+    assertEquals(err.message, "foo");
   }
 });
 
@@ -394,7 +379,7 @@ test("removeObject - return the correct shape", async () => {
   assert(res.ok);
 });
 
-test("removeObject - fail and return correct shape", async () => {
+test("removeObject - rejects with Error if fail to delete object", async () => {
   s3.deleteObject = spy(rejects(new Error("foo")));
 
   try {
@@ -404,8 +389,7 @@ test("removeObject - fail and return correct shape", async () => {
     });
     assert(false);
   } catch (err) {
-    assertEquals(err.ok, false);
-    assertEquals(err.msg, "foo");
+    assertEquals(err.message, "foo");
   }
 });
 
@@ -432,7 +416,7 @@ test("getObject - return the correct shape", async () => {
   s3.getObject = original;
 });
 
-test("getObject - fail and return correct shape", async () => {
+test("getObject - rejects with Error if fail to getObject", async () => {
   const original = s3.getObject;
   s3.getObject = ({ Key }) => {
     if (Key === "meta.json") {
@@ -449,8 +433,7 @@ test("getObject - fail and return correct shape", async () => {
     });
     assert(false);
   } catch (err) {
-    assertEquals(err.ok, false);
-    assertEquals(err.msg, "foo");
+    assertEquals(err.message, "foo");
     s3.getObject = original;
   }
 });
@@ -469,7 +452,7 @@ test("listObjects - return the correct shape", async () => {
   assertEquals(res.objects, ["foo", "bar"]);
 });
 
-test("listObjects - fail and return correct shape", async () => {
+test("listObjects - rejects with Error if fail to list objects in bucket (with prefix)", async () => {
   s3.listObjects = spy(rejects(new Error("foo")));
 
   try {
@@ -479,7 +462,6 @@ test("listObjects - fail and return correct shape", async () => {
     });
     assert(false);
   } catch (err) {
-    assertEquals(err.ok, false);
-    assertEquals(err.msg, "foo");
+    assertEquals(err.message, "foo");
   }
 });

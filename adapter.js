@@ -2,7 +2,7 @@ import { Buffer, crocks, join, R, readAll } from "./deps.js";
 
 import * as lib from "./lib/s3.js";
 
-import { checkName, mapErr } from "./lib/utils.js";
+import { checkName, handleHyperErr, HyperErr } from "./lib/utils.js";
 
 const { Async } = crocks;
 const {
@@ -64,7 +64,7 @@ const [META, CREATED_AT, DELETED_AT] = ["meta.json", "createdAt", "deletedAt"];
  */
 
 /**
- * @param {{ s3: any, factory: any }} aws
+ * @param {{ s3: any, factory: any, getSignedUrl: any, credentialProvider: any }} aws
  * @returns
  */
 export default function (bucketPrefix, aws) {
@@ -186,8 +186,11 @@ export default function (bucketPrefix, aws) {
       )
       .chain(ifElse(
         identity,
-        Async.Resolved, // does exist
-        () => Async.Rejected({ status: 404, msg: "bucket does not exist" }), // does not exist
+        Async.Resolved,
+        () =>
+          Async.Rejected(
+            HyperErr({ status: 404, msg: "bucket does not exist" }),
+          ),
       ));
   }
 
@@ -242,17 +245,16 @@ export default function (bucketPrefix, aws) {
                 assoc(name, { [CREATED_AT]: new Date().toISOString() }, meta),
               ),
             // The namespace already exists
-            () => Async.Rejected({ status: 409, msg: "bucket already exists" }),
+            () =>
+              Async.Rejected(
+                HyperErr({ status: 409, msg: "bucket already exists" }),
+              ),
           )
       )
       .chain(saveMeta)
-      .bimap(
-        (err) => ({ msg: mapErr(err), status: err.status }),
-        identity,
-      )
-      .bimap(
-        ({ status, msg }) => ({ ok: false, status, msg }),
-        always({ ok: true }),
+      .bichain(
+        handleHyperErr,
+        always(Async.Resolved({ ok: true })),
       ).toPromise();
   }
 
@@ -276,7 +278,10 @@ export default function (bucketPrefix, aws) {
       .chain((meta) =>
         checkNamespaceExists(meta, name)
           .bichain(
-            () => Async.Rejected({ status: 404, msg: "bucket does not exist" }),
+            () =>
+              Async.Rejected(
+                HyperErr({ status: 404, msg: "bucket does not exist" }),
+              ),
             () => removeObjects(name),
           )
           .chain(
@@ -287,12 +292,9 @@ export default function (bucketPrefix, aws) {
                 .chain(saveMeta),
           )
       )
-      .bimap(
-        (err) => ({ msg: mapErr(err), status: err.status }),
-        identity,
-      ).bimap(
-        ({ status, msg }) => ({ ok: false, status, msg }),
-        always({ ok: true }),
+      .bichain(
+        handleHyperErr,
+        always(Async.Resolved({ ok: true })),
       ).toPromise();
   }
 
@@ -304,12 +306,10 @@ export default function (bucketPrefix, aws) {
       .map(dissoc(CREATED_AT))
       .map(filter(notHas(DELETED_AT)))
       .map(keys)
-      .bimap(
-        (err) => ({ msg: mapErr(err), status: err.status }),
-        identity,
-      ).bimap(
-        ({ status, msg }) => ({ ok: false, status, msg }),
-        (bucketNamesArr) => ({ ok: true, buckets: bucketNamesArr }),
+      .bichain(
+        handleHyperErr,
+        (bucketNamesArr) =>
+          Async.Resolved({ ok: true, buckets: bucketNamesArr }),
       ).toPromise();
   }
 
@@ -327,9 +327,9 @@ export default function (bucketPrefix, aws) {
       .chain(() =>
         putObjectOrSignedUrl({ bucket, object, stream, useSignedUrl })
       )
-      .bimap(
-        (err) => ({ ok: false, msg: mapErr(err), status: err.status }),
-        identity,
+      .bichain(
+        handleHyperErr,
+        Async.Resolved,
       ).toPromise();
   }
 
@@ -350,12 +350,9 @@ export default function (bucketPrefix, aws) {
           key: createPrefix(bucket, object),
         })
       )
-      .bimap(
-        (err) => ({ msg: mapErr(err), status: err.status }),
-        identity,
-      ).bimap(
-        ({ status, msg }) => ({ ok: false, status, msg }),
-        always({ ok: true }),
+      .bichain(
+        handleHyperErr,
+        always(Async.Resolved({ ok: true })),
       ).toPromise();
   }
 
@@ -377,11 +374,11 @@ export default function (bucketPrefix, aws) {
         })
       )
       .bimap(
-        (err) => ({ msg: mapErr(err), status: err.status }),
+        identity,
         path(["Body", "buffer"]),
-      ).bimap(
-        ({ status, msg }) => ({ ok: false, status, msg }),
-        (arrayBuffer) => new Buffer(arrayBuffer),
+      ).bichain(
+        handleHyperErr,
+        (arrayBuffer) => Async.Resolved(new Buffer(arrayBuffer)),
       ).toPromise();
   }
 
@@ -403,14 +400,15 @@ export default function (bucketPrefix, aws) {
         })
       )
       .bimap(
-        (err) => ({ msg: mapErr(err), status: err.status }),
+        identity,
         compose(
           map(prop("Key")),
           prop("Contents"),
         ),
-      ).bimap(
-        ({ status, msg }) => ({ ok: false, status, msg }),
-        (objectNamesArr) => ({ ok: true, objects: objectNamesArr }),
+      ).bichain(
+        handleHyperErr,
+        (objectNamesArr) =>
+          Async.Resolved({ ok: true, objects: objectNamesArr }),
       ).toPromise();
   }
 
