@@ -1,37 +1,35 @@
-import { assert, assertEquals } from "../../dev_deps.js";
+import { assert, assertEquals, assertThrows } from "../../dev_deps.js";
 
-import { checkName, mapErr } from "../../lib/utils.js";
+import { checkName, HyperErr, isHyperErr } from "../../lib/utils.js";
 
 const { test } = Deno;
 
-test("mapErr - should return the string", () => {
-  const res = mapErr("foobar");
+test("HyperErr - should accept nil, string, or object, and throw otherwise", () => {
+  assert(HyperErr());
+  assert(HyperErr({}));
+  assert(HyperErr("foo"));
+  assert(HyperErr({ msg: "foo" }));
 
-  assertEquals(res, "foobar");
+  assertThrows(() => HyperErr({ foo: "bar" }));
+  assertThrows(() => HyperErr([]));
+  assertThrows(() => HyperErr(function () {}));
 });
 
-test("mapErr - should return the error message", () => {
-  const res = mapErr(new Error("foobar"));
+test("HyperErr - should set fields", () => {
+  const base = HyperErr();
+  const withStatus = HyperErr({ status: 404 });
+  const fromStr = HyperErr("foo");
+  const fromObj = HyperErr({ msg: "foo" });
+  const strip = HyperErr({ msg: "foo", omit: "me" });
 
-  assertEquals(res, "foobar");
-});
+  assertEquals(base.ok, false);
 
-test("mapErr - should return the object message", () => {
-  const res = mapErr({ message: "foobar" });
+  assertEquals(withStatus.status, 404);
+  assert(!Object.keys(fromStr).includes("status"));
 
-  assertEquals(res, "foobar");
-});
-
-test("mapErr - should return the stringified thing", () => {
-  const res = mapErr({ foo: "bar" });
-
-  assertEquals(res, JSON.stringify({ foo: "bar" }));
-});
-
-test("mapErr - should return generic message", () => {
-  const res = mapErr(undefined);
-
-  assertEquals(res, "An error occurred");
+  assertEquals(fromStr.msg, "foo");
+  assertEquals(fromObj.msg, "foo");
+  assert(!strip.omit);
 });
 
 test("checkName - should resolve with the name", async () => {
@@ -42,15 +40,14 @@ test("checkName - should resolve with the name", async () => {
     .toPromise();
 });
 
-test("checkName - should reject with an array of strings", async () => {
+test("checkName - should reject with a HyperErr", async () => {
   const invalidName = "/path/../to/a/file";
 
   await checkName(invalidName)
     .coalesce(
-      (errs) => {
-        assert(Array.isArray(errs));
-        assert(errs.length);
-        assert(typeof errs[0] === "string");
+      (err) => {
+        assert(isHyperErr(err));
+        assert(typeof err.msg === "string");
         return;
       },
       () => {
