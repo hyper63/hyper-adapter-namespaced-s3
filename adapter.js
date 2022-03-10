@@ -1,8 +1,8 @@
-import { Buffer, crocks, join, R, readAll } from "./deps.js";
+import { Buffer, crocks, HyperErr, join, R, readAll } from "./deps.js";
 
 import * as lib from "./lib/s3.js";
 
-import { checkName, handleHyperErr, HyperErr } from "./lib/utils.js";
+import { checkName, handleHyperErr, isAwsTokenErr } from "./lib/utils.js";
 
 const { Async } = crocks;
 const {
@@ -27,6 +27,19 @@ const {
 
 const notHas = (prop) => complement(has(prop));
 const createPrefix = (bucket, name) => join(bucket, name);
+const asyncifyHandle = (fn) =>
+  Async.fromPromise(
+    (...args) =>
+      Promise.resolve(fn(...args))
+        .catch((err) => {
+          // Map token errs to a HyperErr
+          // TODO: emit 'unhealthy' when event listener api is finalized
+          if (isAwsTokenErr(err)) {
+            throw HyperErr({ status: 500, msg: "AWS credentials are invalid" });
+          }
+          throw err;
+        }),
+  );
 
 export const HYPER_BUCKET_PREFIX = "hyper-storage-namespaced";
 
@@ -73,14 +86,14 @@ export default function (bucketPrefix, aws) {
   const getCredentials = Async.fromPromise(credentialProvider.getCredentials);
 
   const client = {
-    makeBucket: Async.fromPromise(lib.makeBucket(s3)),
-    listBuckets: Async.fromPromise(lib.listBuckets(s3)),
-    putObject: Async.fromPromise(lib.putObject(s3)),
-    removeObject: Async.fromPromise(lib.removeObject(s3)),
-    removeObjects: Async.fromPromise(lib.removeObjects(s3)),
-    getObject: Async.fromPromise(lib.getObject(s3)),
-    getSignedUrl: Async.fromPromise(lib.getSignedUrl({ getSignedUrl })),
-    listObjects: Async.fromPromise(lib.listObjects(s3)),
+    makeBucket: asyncifyHandle(lib.makeBucket(s3)),
+    listBuckets: asyncifyHandle(lib.listBuckets(s3)),
+    putObject: asyncifyHandle(lib.putObject(s3)),
+    removeObject: asyncifyHandle(lib.removeObject(s3)),
+    removeObjects: asyncifyHandle(lib.removeObjects(s3)),
+    getObject: asyncifyHandle(lib.getObject(s3)),
+    getSignedUrl: asyncifyHandle(lib.getSignedUrl({ getSignedUrl })),
+    listObjects: asyncifyHandle(lib.listObjects(s3)),
   };
 
   // The single bucket used for all objects
@@ -98,22 +111,24 @@ export default function (bucketPrefix, aws) {
   function getMeta() {
     // makeBucket is idempotent and will succeed even if bucket already exists
     return client.makeBucket(namespacedBucket)
-      .chain(() => client.getObject({ bucket: namespacedBucket, key: META }))
-      /**
-       * Find or create the meta.json object
-       */
-      .bichain(
-        (err) => {
-          return err.message.includes("NoSuchKey")
-            // Create
-            ? Async.of({ [CREATED_AT]: new Date().toISOString() })
-              .chain((meta) => saveMeta(meta).map(() => meta))
-            : Async.Rejected(err); // Some other error
-        },
-        // Found
-        (r) =>
-          Async.of(r)
-            .map((r) => JSON.parse(new TextDecoder().decode(r.Body))),
+      .chain(() =>
+        client.getObject({ bucket: namespacedBucket, key: META })
+          /**
+           * Find or create the meta.json object
+           */
+          .bichain(
+            (err) => {
+              return err.message.includes("NoSuchKey")
+                // Create
+                ? Async.of({ [CREATED_AT]: new Date().toISOString() })
+                  .chain((meta) => saveMeta(meta).map(() => meta))
+                : Async.Rejected(err); // Some other error
+            },
+            // Found
+            (r) =>
+              Async.of(r)
+                .map((r) => JSON.parse(new TextDecoder().decode(r.Body))),
+          )
       );
   }
 
