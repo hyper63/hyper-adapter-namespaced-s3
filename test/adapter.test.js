@@ -8,6 +8,7 @@ import {
 
 import adapterBuilder from "../adapter.js";
 import { Buffer } from "../deps.js";
+import { tokenErrs } from "../lib/utils.js";
 
 const resolves = (val) => () => Promise.resolve(val);
 const rejects = (val) => () => Promise.reject(val);
@@ -49,6 +50,23 @@ const { test } = Deno;
 
 test("should implement the port", () => {
   assert(validateStorageAdapterSchema(adapter));
+});
+
+test("* - should map AWS Token errors to HyperErr", async () => {
+  const original = s3.createBucket;
+
+  await Promise.all(
+    tokenErrs.map(async (te) => {
+      s3.createBucket = () => Promise.reject(new Error(`${te} - found`));
+      await adapter.makeBucket(existingNamespace).then(({ ok, status }) => {
+        assert(ok === false);
+        assert(status === 500);
+        s3.createBucket = original;
+      });
+    }),
+  );
+
+  s3.createBucket = original;
 });
 
 test("makeBucket - make a bucket and namespace and return the correct shape", async () => {
