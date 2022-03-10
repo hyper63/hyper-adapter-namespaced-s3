@@ -1,8 +1,8 @@
-import { Buffer, crocks, join, R, readAll } from "./deps.js";
+import { Buffer, crocks, HyperErr, join, R, readAll } from "./deps.js";
 
 import * as lib from "./lib/s3.js";
 
-import { checkName, handleHyperErr, HyperErr } from "./lib/utils.js";
+import { checkName, handleHyperErr } from "./lib/utils.js";
 
 const { Async } = crocks;
 const {
