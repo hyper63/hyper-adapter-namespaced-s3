@@ -5,7 +5,7 @@
   "description": "Hyper Storage port adapter for aws s3 that uses a single namespaced s3 bucket",
   "homepage": "https://github.com/hyper63/hyper-adapter-s3",
   "repo": "https://github.com/hyper63/hyper-adapter-s3",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "unstable": false,
   "unlisted": false,
   "files": [
