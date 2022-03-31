@@ -15,6 +15,7 @@ const {
   compose,
   pluck,
   prop,
+  propEq,
   map,
   identity,
   path,
@@ -43,7 +44,12 @@ const asyncifyHandle = (fn) =>
 
 export const HYPER_BUCKET_PREFIX = "hyper-storage-namespaced";
 
-const [META, CREATED_AT, DELETED_AT] = ["meta.json", "createdAt", "deletedAt"];
+const [META, CREATED_AT, DELETED_AT, BUCKET_NOT_FOUND_CODE] = [
+  "meta.json",
+  "createdAt",
+  "deletedAt",
+  "Http404",
+];
 
 /**
  * @typedef {Object} PutObjectArgs
@@ -87,6 +93,7 @@ export default function (bucketPrefix, aws) {
 
   const client = {
     makeBucket: asyncifyHandle(lib.makeBucket(s3)),
+    headBucket: asyncifyHandle(lib.headBucket(s3)),
     listBuckets: asyncifyHandle(lib.listBuckets(s3)),
     putObject: asyncifyHandle(lib.putObject(s3)),
     removeObject: asyncifyHandle(lib.removeObject(s3)),
@@ -98,6 +105,23 @@ export default function (bucketPrefix, aws) {
 
   // The single bucket used for all objects
   const namespacedBucket = `${HYPER_BUCKET_PREFIX}-${bucketPrefix}`;
+  /**
+   * Check if the bucket exists, and create if not
+   */
+  function findOrCreateBucket() {
+    return client.headBucket(namespacedBucket)
+      .bichain(
+        ifElse(
+          propEq("code", BUCKET_NOT_FOUND_CODE),
+          always(Async.Resolved(false)), // bucket does not exist
+          Async.Rejected, // some unknown err, so bubble
+        ),
+        always(Async.Resolved(true)),
+      )
+      .chain((exists) =>
+        exists ? Async.Resolved() : client.makeBucket(namespacedBucket)
+      );
+  }
 
   /**
    * Get the meta.json for the namespaced s3 bucket
@@ -109,8 +133,7 @@ export default function (bucketPrefix, aws) {
    * @returns {object}
    */
   function getMeta() {
-    // makeBucket is idempotent and will succeed even if bucket already exists
-    return client.makeBucket(namespacedBucket)
+    return findOrCreateBucket()
       .chain(() =>
         client.getObject({ bucket: namespacedBucket, key: META })
           /**
