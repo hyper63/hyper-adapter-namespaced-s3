@@ -8,6 +8,7 @@ import {
 import {
   getObject,
   getSignedUrl,
+  headBucket,
   listBuckets,
   listObjects,
   makeBucket,
@@ -29,6 +30,17 @@ test("makeBucket - should pass correct shape", async () => {
   await makeBucket(s3)(name);
 
   assertObjectMatch(s3.createBucket.calls.shift(), {
+    args: [{ Bucket: name }],
+  });
+});
+
+test("headBucket - should pass correct shape", async () => {
+  const name = "foo";
+  s3.headBucket = spy(resolves());
+
+  await headBucket(s3)(name);
+
+  assertObjectMatch(s3.headBucket.calls.shift(), {
     args: [{ Bucket: name }],
   });
 });

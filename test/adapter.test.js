@@ -17,6 +17,7 @@ const existingNamespace = "foo";
 // mock client
 const s3 = {
   createBucket: () => Promise.resolve(),
+  headBucket: () => Promise.reject({ code: "Http404" }), // bucekt does not exist
   getObject: () => {
     return Promise.resolve({
       Body: new TextEncoder().encode(
@@ -72,6 +73,20 @@ test("* - should map AWS Token errors to HyperErr", async () => {
 test("makeBucket - make a bucket and namespace and return the correct shape", async () => {
   const res = await adapter.makeBucket("no_foo");
   assert(res.ok);
+});
+
+test("makeBucket - does NOT create bucket, creates namespace and return the correct shape", async () => {
+  const original = s3.headBucket;
+  const originalCreateBucket = s3.createBucket;
+  s3.headBucket = resolves();
+  s3.createBucket = spy(resolves());
+
+  const res = await adapter.makeBucket("no_foo");
+  assert(res.ok);
+  // call to create bucket should not happen
+  assertEquals(0, s3.createBucket.calls.length);
+  s3.headBucket = original;
+  s3.createBucket = originalCreateBucket;
 });
 
 test("makeBucket - creates the meta document if it doesn't exist", async () => {
