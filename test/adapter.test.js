@@ -41,11 +41,15 @@ const credentialProvider = {
     }),
 };
 
-const adapter = adapterBuilder("foo", {
+const args = {
   s3,
   credentialProvider,
+  // standalone apis
   getSignedUrl: () => Promise.resolve("https://foo.bar"),
-});
+  multiPartUpload: () => Promise.resolve(),
+};
+
+const adapter = adapterBuilder("foo", args);
 
 const { test } = Deno;
 
@@ -350,7 +354,12 @@ test("putObject (useSignedUrl) - return the correct shape", async () => {
 });
 
 test("all - passes the correct prefix", async () => {
-  s3.putObject = spy(({ body }) => Promise.resolve(body));
+  const multiPartUpload = spy(resolves());
+
+  const adapter = adapterBuilder("foo", {
+    ...args,
+    multiPartUpload,
+  });
 
   await adapter.putObject({
     bucket: existingNamespace,
@@ -365,12 +374,12 @@ test("all - passes the correct prefix", async () => {
     stream: new Buffer(new Uint8Array(4).buffer),
   });
 
-  assertObjectMatch(s3.putObject.calls.shift(), {
-    args: [{ Key: `${existingNamespace}/fizz/buzz/bar.jpg` }],
+  assertObjectMatch(multiPartUpload.calls.shift(), {
+    args: [s3, { Key: `${existingNamespace}/fizz/buzz/bar.jpg` }],
   });
 
-  assertObjectMatch(s3.putObject.calls.shift(), {
-    args: [{ Key: `${existingNamespace}/buzz/bar.jpg` }],
+  assertObjectMatch(multiPartUpload.calls.shift(), {
+    args: [s3, { Key: `${existingNamespace}/buzz/bar.jpg` }],
   });
 });
 
@@ -388,7 +397,10 @@ test("all - resolves with HyperErr if name is invalid", async () => {
 });
 
 test("putObject - rejects with Error if fail to putObject", async () => {
-  s3.putObject = spy(rejects(new Error("foo")));
+  const adapter = adapterBuilder("foo", {
+    ...args,
+    multiPartUpload: spy(rejects(new Error("foo"))),
+  });
 
   try {
     await adapter.putObject({

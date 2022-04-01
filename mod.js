@@ -4,6 +4,7 @@ import {
   crocks,
   DefaultCredentialsProvider,
   getSignedUrl,
+  multiPartUpload,
   R,
   S3,
 } from "./deps.js";
@@ -93,7 +94,9 @@ export default (
         factory: env.factory,
         credentialProvider: env.credentialProvider,
         s3: new S3(env.factory),
+        // separate lib impls
         getSignedUrl,
+        multiPartUpload,
       }),
       env,
     );
