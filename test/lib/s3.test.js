@@ -12,6 +12,7 @@ import {
   listBuckets,
   listObjects,
   makeBucket,
+  multiPartUpload,
   putObject,
   removeObject,
   removeObjects,
@@ -141,6 +142,21 @@ test("getSignedUrl - should pass correct shape", async () => {
       expiresIn: expires,
       method,
     }],
+  });
+});
+
+test("multiPartUpload - should pass correct shape", async () => {
+  const bucket = "buck";
+  const key = "foo";
+  const body = "bar";
+  const mockS3 = { mock: "s3" };
+
+  s3.multiPartUpload = spy(resolves());
+
+  await multiPartUpload(s3)({ bucket, key, body, s3: mockS3 });
+
+  assertObjectMatch(s3.multiPartUpload.calls.shift(), {
+    args: [mockS3, { Bucket: bucket, Key: key, Body: body }],
   });
 });
 

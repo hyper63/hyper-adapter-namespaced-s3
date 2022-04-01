@@ -7,8 +7,12 @@ export {
   AwsEndpointResolver,
   DefaultCredentialsProvider,
 } from "https://deno.land/x/aws_api@v0.6.0/client/mod.ts";
+// experimental
+export { multiPartUpload } from "https://raw.githubusercontent.com/cloudydeno/deno-aws_api/89703336482f008f3f6ebd9f759370fd393ba362/lib/helpers/s3-upload.ts";
+// stable, but not yet published to deno.land
 export { S3 } from "https://raw.githubusercontent.com/cloudydeno/deno-aws_api/efe1a0bc6a9c6ece3ba02133e10a79446fb92f58/lib/services/s3/mod.ts";
-export { readAll } from "https://deno.land/std@0.132.0/streams/conversion.ts";
+
+export { readableStreamFromReader } from "https://deno.land/std@0.132.0/streams/conversion.ts";
 export { Buffer } from "https://deno.land/std@0.132.0/io/buffer.ts";
 export { join } from "https://deno.land/std@0.132.0/path/mod.ts";
 

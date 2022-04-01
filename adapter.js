@@ -1,4 +1,11 @@
-import { Buffer, crocks, HyperErr, join, R, readAll } from "./deps.js";
+import {
+  Buffer,
+  crocks,
+  HyperErr,
+  join,
+  R,
+  readableStreamFromReader,
+} from "./deps.js";
 
 import * as lib from "./lib/s3.js";
 
@@ -87,9 +94,7 @@ const [META, CREATED_AT, DELETED_AT, BUCKET_NOT_FOUND_CODE] = [
  * @returns
  */
 export default function (bucketPrefix, aws) {
-  const { s3, getSignedUrl, credentialProvider } = aws;
-
-  const getCredentials = Async.fromPromise(credentialProvider.getCredentials);
+  const { s3, getSignedUrl, multiPartUpload, credentialProvider } = aws;
 
   const client = {
     makeBucket: asyncifyHandle(lib.makeBucket(s3)),
@@ -99,8 +104,10 @@ export default function (bucketPrefix, aws) {
     removeObject: asyncifyHandle(lib.removeObject(s3)),
     removeObjects: asyncifyHandle(lib.removeObjects(s3)),
     getObject: asyncifyHandle(lib.getObject(s3)),
-    getSignedUrl: asyncifyHandle(lib.getSignedUrl({ getSignedUrl })),
     listObjects: asyncifyHandle(lib.listObjects(s3)),
+    // Built on top of standalone apis
+    getSignedUrl: asyncifyHandle(lib.getSignedUrl({ getSignedUrl })),
+    multiPartUpload: asyncifyHandle(lib.multiPartUpload({ multiPartUpload })),
   };
 
   // The single bucket used for all objects
@@ -232,24 +239,26 @@ export default function (bucketPrefix, aws) {
       ));
   }
 
-  function putObjectOrSignedUrl({ bucket, object, stream, useSignedUrl }) {
+  function putObjectOrSignedUrl(
+    { bucket, object, stream: reader, useSignedUrl },
+  ) {
     const key = createPrefix(bucket, object);
 
     if (!useSignedUrl) {
-      return Async.of(stream)
-        .chain(Async.fromPromise(readAll))
+      return Async.of(readableStreamFromReader(reader))
         .chain((arrBuffer) =>
-          client.putObject({
+          client.multiPartUpload({
             bucket: namespacedBucket,
             key,
             body: arrBuffer,
+            s3,
           })
         )
         .map(always({ ok: true }));
     }
 
     return Async.of()
-      .chain(getCredentials)
+      .chain(Async.fromPromise(credentialProvider.getCredentials))
       .chain((credentials) =>
         client.getSignedUrl({
           bucket: namespacedBucket,
@@ -352,6 +361,8 @@ export default function (bucketPrefix, aws) {
   }
 
   /**
+   * TODO: stream is actually a Deno.Reader. should we change the arg name?
+   *
    * @param {PutObjectArgs}
    * @returns {Promise<ResponseOk>}
    */
