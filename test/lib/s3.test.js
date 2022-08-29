@@ -110,7 +110,7 @@ test("getObject - should pass correct shape", async () => {
 });
 
 test("getSignedUrl - should pass correct shape", async () => {
-  const bucket = "buck";
+  const bucket = "Buck";
   const key = "foo.jpg";
   const method = "PUT";
   const expires = 60 * 5;
@@ -136,7 +136,7 @@ test("getSignedUrl - should pass correct shape", async () => {
       secretAccessKey: "secret",
       sessionToken: "token",
       region: "us-east-1",
-      bucketName: bucket,
+      bucketName: bucket.toLowerCase(),
       objectPath: `/${key}`,
       expiresIn: expires,
       method,

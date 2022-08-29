@@ -1,5 +1,5 @@
 // Schema parsing deps
-export { default as validateFactorySchema } from "https://x.nest.land/hyper@3.1.0/utils/plugin-schema.js";
+export { default as validateFactorySchema } from "https://x.nest.land/hyper@3.3.0/utils/plugin-schema.js";
 export { storage as validateStorageAdapterSchema } from "https://x.nest.land/hyper-port-storage@1.2.0/mod.js";
 
 // std lib deps
