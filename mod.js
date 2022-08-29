@@ -63,9 +63,7 @@ export default (
             ...DefaultCredentialsProvider,
             getCredentials: () =>
               DefaultCredentialsProvider.getCredentials()
-                .then(mergeRight(
-                  { region: "us-east-1" }, // add default region if not provided
-                )),
+                .then(setAwsRegion),
           },
       env,
     );
