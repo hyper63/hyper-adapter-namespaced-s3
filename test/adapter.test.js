@@ -516,6 +516,20 @@ test("object", async (t) => {
       s3.getObject = original;
     });
 
+    await t.step(
+      "useSignedUrl - return the correct shape",
+      async () => {
+        const res = await adapter.getObject({
+          bucket: existingNamespace,
+          object: "bar.jpg",
+          useSignedUrl: true,
+        });
+
+        assert(res.ok);
+        assert(res.url);
+      },
+    );
+
     await t.step("rejects with Error if fail to getObject", async () => {
       const original = s3.getObject;
       s3.getObject = ({ Key }) => {

@@ -261,6 +261,35 @@ export default function (bucketPrefix, aws) {
       .map((url) => ({ ok: true, url }));
   }
 
+  function getObjectOrSignedUrl({ bucket, object, useSignedUrl }) {
+    const key = createPrefix(bucket, object);
+
+    if (!useSignedUrl) {
+      return client.getObject({
+        bucket: namespacedBucket,
+        key,
+      })
+        .map(
+          path(["Body", "buffer"]),
+        ).map(
+          (arrayBuffer) => new Buffer(arrayBuffer),
+        );
+    }
+
+    return Async.of()
+      .chain(getCredentials)
+      .chain((credentials) =>
+        client.getSignedUrl({
+          bucket: namespacedBucket,
+          key,
+          method: "GET",
+          expires: 10000, // expiration is 1 hour
+          credentials,
+        })
+      )
+      .map((url) => ({ ok: true, url }));
+  }
+
   /**
    * Create a namespace (prefix/folder) within the s3 bucket
    * recording it's existence in the meta file
@@ -398,25 +427,17 @@ export default function (bucketPrefix, aws) {
    * @param {ObjectArgs}
    * @returns {Promise<Buffer>}
    */
-  function getObject({ bucket, object }) {
+  function getObject({ bucket, object, useSignedUrl }) {
     return checkName(bucket)
       .chain(() => checkName(object))
       .chain(getMeta)
       .chain(
         (meta) => checkNamespaceExists(meta, bucket),
       )
-      .chain(() =>
-        client.getObject({
-          bucket: namespacedBucket,
-          key: createPrefix(bucket, object),
-        })
-      )
-      .bimap(
-        identity,
-        path(["Body", "buffer"]),
-      ).bichain(
+      .chain(() => getObjectOrSignedUrl({ bucket, object, useSignedUrl }))
+      .bichain(
         handleHyperErr,
-        (arrayBuffer) => Async.Resolved(new Buffer(arrayBuffer)),
+        Async.Resolved,
       ).toPromise();
   }
 
