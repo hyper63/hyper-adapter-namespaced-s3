@@ -6,7 +6,7 @@ import { checkName } from "../../lib/utils.js";
 const { test } = Deno;
 
 test("checkName", async (t) => {
-  await t.step("checkName - should resolve with the name", async () => {
+  await t.step("should resolve with the name", async () => {
     const name = "/path/to/file/./here";
 
     await checkName(name)
@@ -14,7 +14,7 @@ test("checkName", async (t) => {
       .toPromise();
   });
 
-  await t.step("checkName - should reject with a HyperErr", async () => {
+  await t.step("should reject with a HyperErr", async () => {
     const invalidName = "/path/../to/a/file";
 
     await checkName(invalidName)

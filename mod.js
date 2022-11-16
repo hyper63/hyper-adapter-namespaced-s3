@@ -3,13 +3,13 @@ import {
   AwsEndpointResolver,
   crocks,
   DefaultCredentialsProvider,
-  getSignedUrl,
   R,
   S3,
 } from "./deps.js";
 
 import createAdapter from "./adapter.js";
 import PORT_NAME from "./port_name.js";
+import { getSignedUrl } from "./lib/getSignedUrl.ts";
 
 const { Either } = crocks;
 const { Left, Right, of } = Either;

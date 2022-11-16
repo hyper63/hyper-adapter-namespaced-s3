@@ -1,16 +1,15 @@
 export * as R from "https://cdn.skypack.dev/ramda@0.28.0";
 export { default as crocks } from "https://cdn.skypack.dev/crocks@0.12.4";
 
-export { getSignedUrl } from "https://deno.land/x/aws_s3_presign@1.3.0/mod.ts";
 export {
   ApiFactory,
   AwsEndpointResolver,
   DefaultCredentialsProvider,
 } from "https://deno.land/x/aws_api@v0.7.0/client/mod.ts";
 export { S3 } from "https://deno.land/x/aws_api@v0.7.0/services/s3/mod.ts";
-export { readAll } from "https://deno.land/std@0.153.0/streams/conversion.ts";
-export { Buffer } from "https://deno.land/std@0.153.0/io/buffer.ts";
-export { join } from "https://deno.land/std@0.153.0/path/mod.ts";
+export { readAll } from "https://deno.land/std@0.165.0/streams/conversion.ts";
+export { Buffer } from "https://deno.land/std@0.165.0/io/buffer.ts";
+export { join } from "https://deno.land/std@0.165.0/path/mod.ts";
 
 export {
   HyperErr,
