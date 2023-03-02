@@ -9,13 +9,11 @@
 
 ---
 
-> **Note**: this adapter utilizes a **single S3 bucket** to store all objects,
-> across all hyper storage services, where each hyper Storage service is a
-> prefix in that single bucket. This makes it a great option if you're concerned
-> about surpassing AWS'
+> **Note**: this adapter utilizes a **single S3 bucket** to store all objects, across all hyper
+> storage services, where each hyper Storage service is a prefix in that single bucket. This makes
+> it a great option if you're concerned about surpassing AWS'
 > [S3 Bucket Count Restrictions](https://docs.aws.amazon.com/AmazonS3/latest/userguide/BucketRestrictions.html)
-> If you'd like an S3 bucket created for _each_ hyper Storage service created,
-> consider using the
+> If you'd like an S3 bucket created for _each_ hyper Storage service created, consider using the
 > [hyper-adapter-s3 adapter](https://github.com/hyper63/hyper-adapter-s3).
 
 ## Table of Contents
@@ -32,25 +30,25 @@
 `hyper.config.js`
 
 ```js
-import { default as s3 } from "https://x.nest.land/hyper-adapter-namespaced-s3@0.0.3/mod.js";
+import { default as s3 } from 'https://x.nest.land/hyper-adapter-namespaced-s3@0.0.3/mod.js'
 
 export default {
   app: opine,
   adapter: [
-    { port: "storage", plugins: [s3("UNIQUE_NAME")] },
+    { port: 'storage', plugins: [s3('UNIQUE_NAME')] },
   ],
-};
+}
 ```
 
-When you configure the hyper service with this adapter, you must provide a
-unique bucket prefix. This helps ensure your bucket name is globally unique
+When you configure the hyper service with this adapter, you must provide a unique bucket prefix.
+This helps ensure your bucket name is globally unique
 
-> The unique name is an alphanumeric string that contains identifing
-> information, this will enable you to identify the bucket which will be
-> prefixed by 'hyper-storage-' and whatever name you provide.
+> The unique name is an alphanumeric string that contains identifing information, this will enable
+> you to identify the bucket which will be prefixed by 'hyper-storage-' and whatever name you
+> provide.
 
-In order to use this adapter you will need to have an AWS Account and will need
-the following information:
+In order to use this adapter you will need to have an AWS Account and will need the following
+information:
 
 - IAM User with access to s3 (AWS_ACCESS_KEY_ID, AWS_ACCESS_SECRET_KEY)
 - AWS Region (default: us-east-1)
@@ -59,28 +57,28 @@ the following information:
 
 ### Credentials
 
-This adapter will attempt to read `AWS_ACCESS_KEY_ID` and
-`AWS_ACCESS_SECRET_KEY` from `Deno.env`. Alternatively, you can provide the
-access key, secret key, and region as arguments to the adapter factory function:
+This adapter will attempt to read `AWS_ACCESS_KEY_ID` and `AWS_ACCESS_SECRET_KEY` from `Deno.env`.
+Alternatively, you can provide the access key, secret key, and region as arguments to the adapter
+factory function:
 
 ```js
-import { default as s3 } from "https://x.nest.land/hyper-adapter-namespaced-s3@0.0.3/mod.js";
+import { default as s3 } from 'https://x.nest.land/hyper-adapter-namespaced-s3@0.0.3/mod.js'
 
 export default {
   app: opine,
   adapter: [
     {
-      port: "storage",
+      port: 'storage',
       plugins: [
-        s3("UNIQUE_NAME", {
-          awsAccessKeyId: "foo",
-          awsSecretKey: "bar",
-          awsRegion: "us-east-1", // defaults to 'us-east-1`
+        s3('UNIQUE_NAME', {
+          awsAccessKeyId: 'foo',
+          awsSecretKey: 'bar',
+          awsRegion: 'us-east-1', // defaults to 'us-east-1`
         }),
       ],
     },
   ],
-};
+}
 ```
 
 #### Credentials from ENV VARS
@@ -101,7 +99,7 @@ This is a Deno module available to import from
 deps.js
 
 ```js
-export { default as s3 } from "https://x.nest.land/hyper-adapter-namespaced-s3@0.0.3/mod.js";
+export { default as s3 } from 'https://x.nest.land/hyper-adapter-namespaced-s3@0.0.3/mod.js'
 ```
 
 ## Features

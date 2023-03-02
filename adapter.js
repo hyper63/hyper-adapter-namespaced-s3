@@ -1,10 +1,10 @@
-import { Buffer, crocks, HyperErr, join, R, readAll } from "./deps.js";
+import { Buffer, crocks, HyperErr, join, R, readAll } from './deps.js'
 
-import * as lib from "./lib/s3.js";
+import * as lib from './lib/s3.js'
 
-import { checkName, handleHyperErr, isAwsTokenErr } from "./lib/utils.js";
+import { checkName, handleHyperErr, isAwsTokenErr } from './lib/utils.js'
 
-const { Async } = crocks;
+const { Async } = crocks
 const {
   assocPath,
   assoc,
@@ -24,10 +24,10 @@ const {
   isNil,
   complement,
   defaultTo,
-} = R;
+} = R
 
-const notHas = (prop) => complement(has(prop));
-const createPrefix = (bucket, name) => join(bucket, name);
+const notHas = (prop) => complement(has(prop))
+const createPrefix = (bucket, name) => join(bucket, name)
 const asyncifyHandle = (fn) =>
   Async.fromPromise(
     (...args) =>
@@ -36,20 +36,20 @@ const asyncifyHandle = (fn) =>
           // Map token errs to a HyperErr
           // TODO: emit 'unhealthy' when event listener api is finalized
           if (isAwsTokenErr(err)) {
-            throw HyperErr({ status: 500, msg: "AWS credentials are invalid" });
+            throw HyperErr({ status: 500, msg: 'AWS credentials are invalid' })
           }
-          throw err;
+          throw err
         }),
-  );
+  )
 
-export const HYPER_BUCKET_PREFIX = "hyper-storage-namespaced";
+export const HYPER_BUCKET_PREFIX = 'hyper-storage-namespaced'
 
 const [META, CREATED_AT, DELETED_AT, BUCKET_NOT_FOUND_CODE] = [
-  "meta.json",
-  "createdAt",
-  "deletedAt",
-  "Http404",
-];
+  'meta.json',
+  'createdAt',
+  'deletedAt',
+  'Http404',
+]
 
 /**
  * @typedef {Object} PutObjectArgs
@@ -87,9 +87,9 @@ const [META, CREATED_AT, DELETED_AT, BUCKET_NOT_FOUND_CODE] = [
  * @returns
  */
 export default function (bucketPrefix, aws) {
-  const { s3, getSignedUrl, credentialProvider } = aws;
+  const { s3, getSignedUrl, credentialProvider } = aws
 
-  const getCredentials = Async.fromPromise(credentialProvider.getCredentials);
+  const getCredentials = Async.fromPromise(credentialProvider.getCredentials)
 
   const client = {
     makeBucket: asyncifyHandle(lib.makeBucket(s3)),
@@ -101,10 +101,10 @@ export default function (bucketPrefix, aws) {
     getObject: asyncifyHandle(lib.getObject(s3)),
     getSignedUrl: asyncifyHandle(lib.getSignedUrl({ getSignedUrl })),
     listObjects: asyncifyHandle(lib.listObjects(s3)),
-  };
+  }
 
   // The single bucket used for all objects
-  const namespacedBucket = `${HYPER_BUCKET_PREFIX}-${bucketPrefix}`;
+  const namespacedBucket = `${HYPER_BUCKET_PREFIX}-${bucketPrefix}`
   /**
    * Check if the bucket exists, and create if not
    */
@@ -112,15 +112,13 @@ export default function (bucketPrefix, aws) {
     return client.headBucket(namespacedBucket)
       .bichain(
         ifElse(
-          propEq("code", BUCKET_NOT_FOUND_CODE),
+          propEq('code', BUCKET_NOT_FOUND_CODE),
           always(Async.Resolved(false)), // bucket does not exist
           Async.Rejected, // some unknown err, so bubble
         ),
         always(Async.Resolved(true)),
       )
-      .chain((exists) =>
-        exists ? Async.Resolved() : client.makeBucket(namespacedBucket)
-      );
+      .chain((exists) => exists ? Async.Resolved() : client.makeBucket(namespacedBucket))
   }
 
   /**
@@ -141,18 +139,18 @@ export default function (bucketPrefix, aws) {
            */
           .bichain(
             (err) => {
-              return err.message.includes("NoSuchKey")
+              return err.message.includes('NoSuchKey')
                 // Create
                 ? Async.of({ [CREATED_AT]: new Date().toISOString() })
                   .chain((meta) => saveMeta(meta).map(() => meta))
-                : Async.Rejected(err); // Some other error
+                : Async.Rejected(err) // Some other error
             },
             // Found
             (r) =>
               Async.of(r)
                 .map((r) => JSON.parse(new TextDecoder().decode(r.Body))),
           )
-      );
+      )
   }
 
   /**
@@ -164,7 +162,7 @@ export default function (bucketPrefix, aws) {
       bucket: namespacedBucket,
       key: META,
       body: JSON.stringify(meta),
-    });
+    })
   }
 
   /**
@@ -184,8 +182,8 @@ export default function (bucketPrefix, aws) {
             // gather the keys
             .map(
               compose(
-                pluck("Key"),
-                prop("Contents"),
+                pluck('Key'),
+                prop('Contents'),
               ),
             )
             .chain((keys) =>
@@ -199,7 +197,7 @@ export default function (bucketPrefix, aws) {
                 ? removeObjects(prefix) // recurse to delete more objects
                 : Async.Resolved()
             ),
-      );
+      )
   }
 
   /**
@@ -227,13 +225,13 @@ export default function (bucketPrefix, aws) {
         Async.Resolved,
         () =>
           Async.Rejected(
-            HyperErr({ status: 404, msg: "bucket does not exist" }),
+            HyperErr({ status: 404, msg: 'bucket does not exist' }),
           ),
-      ));
+      ))
   }
 
   function putObjectOrSignedUrl({ bucket, object, stream, useSignedUrl }) {
-    const key = createPrefix(bucket, object);
+    const key = createPrefix(bucket, object)
 
     if (!useSignedUrl) {
       return Async.of(stream)
@@ -245,7 +243,7 @@ export default function (bucketPrefix, aws) {
             body: arrBuffer,
           })
         )
-        .map(always({ ok: true }));
+        .map(always({ ok: true }))
     }
 
     return Async.of()
@@ -254,15 +252,15 @@ export default function (bucketPrefix, aws) {
         client.getSignedUrl({
           bucket: namespacedBucket,
           key,
-          method: "PUT",
+          method: 'PUT',
           credentials,
         })
       )
-      .map((url) => ({ ok: true, url }));
+      .map((url) => ({ ok: true, url }))
   }
 
   function getObjectOrSignedUrl({ bucket, object, useSignedUrl }) {
-    const key = createPrefix(bucket, object);
+    const key = createPrefix(bucket, object)
 
     if (!useSignedUrl) {
       return client.getObject({
@@ -270,10 +268,10 @@ export default function (bucketPrefix, aws) {
         key,
       })
         .map(
-          path(["Body", "buffer"]),
+          path(['Body', 'buffer']),
         ).map(
           (arrayBuffer) => new Buffer(arrayBuffer),
-        );
+        )
     }
 
     return Async.of()
@@ -282,12 +280,12 @@ export default function (bucketPrefix, aws) {
         client.getSignedUrl({
           bucket: namespacedBucket,
           key,
-          method: "GET",
+          method: 'GET',
           expires: 10000, // expiration is 1 hour
           credentials,
         })
       )
-      .map((url) => ({ ok: true, url }));
+      .map((url) => ({ ok: true, url }))
   }
 
   /**
@@ -314,7 +312,7 @@ export default function (bucketPrefix, aws) {
             // The namespace already exists
             () =>
               Async.Rejected(
-                HyperErr({ status: 409, msg: "bucket already exists" }),
+                HyperErr({ status: 409, msg: 'bucket already exists' }),
               ),
           )
       )
@@ -322,7 +320,7 @@ export default function (bucketPrefix, aws) {
       .bichain(
         handleHyperErr,
         always(Async.Resolved({ ok: true })),
-      ).toPromise();
+      ).toPromise()
   }
 
   /**
@@ -347,7 +345,7 @@ export default function (bucketPrefix, aws) {
           .bichain(
             () =>
               Async.Rejected(
-                HyperErr({ status: 404, msg: "bucket does not exist" }),
+                HyperErr({ status: 404, msg: 'bucket does not exist' }),
               ),
             () => removeObjects(name),
           )
@@ -362,7 +360,7 @@ export default function (bucketPrefix, aws) {
       .bichain(
         handleHyperErr,
         always(Async.Resolved({ ok: true })),
-      ).toPromise();
+      ).toPromise()
   }
 
   /**
@@ -375,9 +373,8 @@ export default function (bucketPrefix, aws) {
       .map(keys)
       .bichain(
         handleHyperErr,
-        (bucketNamesArr) =>
-          Async.Resolved({ ok: true, buckets: bucketNamesArr }),
-      ).toPromise();
+        (bucketNamesArr) => Async.Resolved({ ok: true, buckets: bucketNamesArr }),
+      ).toPromise()
   }
 
   /**
@@ -391,13 +388,11 @@ export default function (bucketPrefix, aws) {
       .chain(
         (meta) => checkNamespaceExists(meta, bucket),
       )
-      .chain(() =>
-        putObjectOrSignedUrl({ bucket, object, stream, useSignedUrl })
-      )
+      .chain(() => putObjectOrSignedUrl({ bucket, object, stream, useSignedUrl }))
       .bichain(
         handleHyperErr,
         Async.Resolved,
-      ).toPromise();
+      ).toPromise()
   }
 
   /**
@@ -420,7 +415,7 @@ export default function (bucketPrefix, aws) {
       .bichain(
         handleHyperErr,
         always(Async.Resolved({ ok: true })),
-      ).toPromise();
+      ).toPromise()
   }
 
   /**
@@ -438,7 +433,7 @@ export default function (bucketPrefix, aws) {
       .bichain(
         handleHyperErr,
         Async.Resolved,
-      ).toPromise();
+      ).toPromise()
   }
 
   /**
@@ -461,14 +456,13 @@ export default function (bucketPrefix, aws) {
       .bimap(
         identity,
         compose(
-          map(prop("Key")),
-          prop("Contents"),
+          map(prop('Key')),
+          prop('Contents'),
         ),
       ).bichain(
         handleHyperErr,
-        (objectNamesArr) =>
-          Async.Resolved({ ok: true, objects: objectNamesArr }),
-      ).toPromise();
+        (objectNamesArr) => Async.Resolved({ ok: true, objects: objectNamesArr }),
+      ).toPromise()
   }
 
   return Object.freeze({
@@ -479,5 +473,5 @@ export default function (bucketPrefix, aws) {
     removeObject,
     getObject,
     listObjects,
-  });
+  })
 }

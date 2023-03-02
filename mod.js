@@ -5,14 +5,14 @@ import {
   DefaultCredentialsProvider,
   R,
   S3,
-} from "./deps.js";
+} from './deps.js'
 
-import createAdapter from "./adapter.js";
-import PORT_NAME from "./port_name.js";
-import { getSignedUrl } from "./lib/getSignedUrl.ts";
+import createAdapter from './adapter.js'
+import PORT_NAME from './port_name.js'
+import { getSignedUrl } from './lib/getSignedUrl.ts'
 
-const { Either } = crocks;
-const { Left, Right, of } = Either;
+const { Either } = crocks
+const { Left, Right, of } = Either
 const {
   __,
   assoc,
@@ -23,17 +23,17 @@ const {
   over,
   lensProp,
   defaultTo,
-} = R;
+} = R
 
 export default (
   bucketPrefix,
   { awsAccessKeyId, awsSecretKey, region } = {},
 ) => {
   if (!bucketPrefix || bucketPrefix.length > 32) {
-    throw new Error("bucketPrefix must a string 1-32 alphanumeric characters");
+    throw new Error('bucketPrefix must a string 1-32 alphanumeric characters')
   }
 
-  const setPrefixOn = (obj) => assoc("prefix", __, obj); // expects object
+  const setPrefixOn = (obj) => assoc('prefix', __, obj) // expects object
   const setAwsCreds = (env) =>
     mergeRight(
       env,
@@ -42,16 +42,16 @@ export default (
         awsSecretKey,
         region,
       }),
-    );
+    )
   const setAwsRegion = (env) =>
     mergeRight(
-      { region: "us-east-1" },
+      { region: 'us-east-1' },
       env,
-    );
+    )
 
   const createCredentialProvider = (env) =>
     over(
-      lensProp("credentialProvider"),
+      lensProp('credentialProvider'),
       /**
        * Either use provided credentials or use the DefaultCredentialsProvider
        * from AWS deno sdk, merging in this adapters defualt region
@@ -66,11 +66,11 @@ export default (
                 .then(setAwsRegion),
           },
       env,
-    );
+    )
 
   const createFactory = (env) =>
     over(
-      lensProp("factory"),
+      lensProp('factory'),
       /**
        * Disable using Dualstack endpoints, so this adapter will use VPC Gateway endpoint when used within a VPC
        * - For lib api, see https://github.com/cloudydeno/deno-aws_api/blob/3afef9fe3aaef842fd3a19245593494c3705a1dd/lib/client/endpoints.ts#L19
@@ -82,11 +82,11 @@ export default (
           endpointResolver: new AwsEndpointResolver({ useDualstack: false }),
         }),
       env,
-    );
+    )
 
   const setAws = (env) =>
     over(
-      lensProp("aws"),
+      lensProp('aws'),
       () => ({
         factory: env.factory,
         credentialProvider: env.credentialProvider,
@@ -94,10 +94,10 @@ export default (
         getSignedUrl,
       }),
       env,
-    );
+    )
 
   return Object.freeze({
-    id: "s3",
+    id: 's3',
     port: PORT_NAME,
     load: (prevLoad) =>
       of(prevLoad) // credentials can be received from a composed plugin
@@ -112,15 +112,13 @@ export default (
         .map(createFactory)
         .map(setAws)
         .either(
-          (e) => console.log("Error: In Load Method", e.message),
+          (e) => console.log('Error: In Load Method', e.message),
           identity,
         ),
     link: ({ prefix, aws }) => (_) => createAdapter(prefix, aws),
-  });
-};
+  })
+}
 
 function notIsNil(s) {
-  return isNil(s)
-    ? Left({ message: "S3 Prefix Name: can not be null or undefined!" })
-    : Right(s);
+  return isNil(s) ? Left({ message: 'S3 Prefix Name: can not be null or undefined!' }) : Right(s)
 }

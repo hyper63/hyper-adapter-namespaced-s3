@@ -14,7 +14,6 @@
   ],
   "ignore": [
     "./package.json",
-    "./scripts/*",
     "./.git*",
     "./test/**/*"
   ],
