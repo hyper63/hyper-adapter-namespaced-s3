@@ -7,8 +7,9 @@ export {
   DefaultCredentialsProvider,
 } from 'https://deno.land/x/aws_api@v0.7.0/client/mod.ts'
 export { S3 } from 'https://deno.land/x/aws_api@v0.7.0/services/s3/mod.ts'
-export { readAll } from 'https://deno.land/std@0.165.0/streams/conversion.ts'
-export { Buffer } from 'https://deno.land/std@0.165.0/io/buffer.ts'
-export { join } from 'https://deno.land/std@0.165.0/path/mod.ts'
+
+export { readAll } from 'https://deno.land/std@0.178.0/streams/read_all.ts'
+export { Buffer } from 'https://deno.land/std@0.178.0/io/buffer.ts'
+export { join } from 'https://deno.land/std@0.178.0/path/mod.ts'
 
 export { HyperErr, isHyperErr } from 'https://x.nest.land/hyper-utils@0.1.0/hyper-err.js'
