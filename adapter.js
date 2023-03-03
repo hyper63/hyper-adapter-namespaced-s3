@@ -44,11 +44,12 @@ const asyncifyHandle = (fn) =>
 
 export const HYPER_BUCKET_PREFIX = 'hyper-storage-namespaced'
 
-const [META, CREATED_AT, DELETED_AT, BUCKET_NOT_FOUND_CODE] = [
+const [META, CREATED_AT, DELETED_AT, BUCKET_NOT_FOUND_CODE, NO_SUCH_KEY] = [
   'meta.json',
   'createdAt',
   'deletedAt',
   'Http404',
+  'NoSuchKey',
 ]
 
 /**
@@ -139,7 +140,7 @@ export default function (bucketPrefix, aws) {
            */
           .bichain(
             (err) => {
-              return err.message.includes('NoSuchKey')
+              return err.message.includes(NO_SUCH_KEY)
                 // Create
                 ? Async.of({ [CREATED_AT]: new Date().toISOString() })
                   .chain((meta) => saveMeta(meta).map(() => meta))
@@ -235,6 +236,14 @@ export default function (bucketPrefix, aws) {
 
     if (!useSignedUrl) {
       return Async.of(stream)
+        /**
+         * TODO: use the new managedUpload api which will accept a
+         * stream, buffers into chunks and then uploads to s3 as a multipart upload
+         * which would help with large files ie. >5MB and also prevent us
+         * from reading the stream into a buffer here
+         *
+         * See: https://github.com/cloudydeno/deno-aws_api/pull/31
+         */
         .chain(Async.fromPromise(readAll))
         .chain((arrBuffer) =>
           client.putObject({
@@ -266,14 +275,27 @@ export default function (bucketPrefix, aws) {
       return client.getObject({
         bucket: namespacedBucket,
         key,
-      })
-        .map(
-          path(['Body', 'buffer']),
-        ).map(
-          (arrayBuffer) => new Buffer(arrayBuffer),
-        )
+      }).bichain(
+        (err) => {
+          return err.message.includes(NO_SUCH_KEY)
+            ? Async.Rejected(HyperErr({ status: 404, msg: 'object not found' }))
+            : Async.Rejected(err) // Some other error
+        },
+        // Found
+        (r) =>
+          Async.of(r)
+            .map(path(['Body', 'buffer']))
+            .map((arrayBuffer) => new Buffer(arrayBuffer)),
+      )
     }
 
+    /**
+     * Generating a signedUrl has no way of knowing whether or not
+     * the object actually exists.
+     *
+     * Since signedUrls already sort of break of boundary,
+     * we are deferring this responsibility for checking the signed url to the consumer
+     */
     return Async.of()
       .chain(getCredentials)
       .chain((credentials) =>
@@ -305,15 +327,9 @@ export default function (bucketPrefix, aws) {
              * Set a key for the new namespace
              * NOTE: this also removes any deletedAt for the namespace
              */
-            () =>
-              Async.Resolved(
-                assoc(name, { [CREATED_AT]: new Date().toISOString() }, meta),
-              ),
+            () => Async.Resolved(assoc(name, { [CREATED_AT]: new Date().toISOString() }, meta)),
             // The namespace already exists
-            () =>
-              Async.Rejected(
-                HyperErr({ status: 409, msg: 'bucket already exists' }),
-              ),
+            () => Async.Rejected(HyperErr({ status: 409, msg: 'bucket already exists' })),
           )
       )
       .chain(saveMeta)
@@ -343,17 +359,12 @@ export default function (bucketPrefix, aws) {
       .chain((meta) =>
         checkNamespaceExists(meta, name)
           .bichain(
-            () =>
-              Async.Rejected(
-                HyperErr({ status: 404, msg: 'bucket does not exist' }),
-              ),
+            () => Async.Rejected(HyperErr({ status: 404, msg: 'bucket does not exist' })),
             () => removeObjects(name),
           )
           .chain(
             () =>
-              Async.of(
-                assocPath([name, DELETED_AT], new Date().toISOString(), meta),
-              )
+              Async.of(assocPath([name, DELETED_AT], new Date().toISOString(), meta))
                 .chain(saveMeta),
           )
       )
@@ -385,9 +396,7 @@ export default function (bucketPrefix, aws) {
     return checkName(bucket)
       .chain(() => checkName(object))
       .chain(getMeta)
-      .chain(
-        (meta) => checkNamespaceExists(meta, bucket),
-      )
+      .chain((meta) => checkNamespaceExists(meta, bucket))
       .chain(() => putObjectOrSignedUrl({ bucket, object, stream, useSignedUrl }))
       .bichain(
         handleHyperErr,
@@ -403,9 +412,7 @@ export default function (bucketPrefix, aws) {
     return checkName(bucket)
       .chain(() => checkName(object))
       .chain(getMeta)
-      .chain(
-        (meta) => checkNamespaceExists(meta, bucket),
-      )
+      .chain((meta) => checkNamespaceExists(meta, bucket))
       .chain(() =>
         client.removeObject({
           bucket: namespacedBucket,
@@ -420,15 +427,13 @@ export default function (bucketPrefix, aws) {
 
   /**
    * @param {ObjectArgs}
-   * @returns {Promise<Buffer>}
+   * @returns {Promise<{ ok: false, msg?: string, status?: number } | Buffer>}
    */
   function getObject({ bucket, object, useSignedUrl }) {
     return checkName(bucket)
       .chain(() => checkName(object))
       .chain(getMeta)
-      .chain(
-        (meta) => checkNamespaceExists(meta, bucket),
-      )
+      .chain((meta) => checkNamespaceExists(meta, bucket))
       .chain(() => getObjectOrSignedUrl({ bucket, object, useSignedUrl }))
       .bichain(
         handleHyperErr,
@@ -444,9 +449,7 @@ export default function (bucketPrefix, aws) {
     return checkName(bucket)
       .chain(() => checkName(prefix))
       .chain(getMeta)
-      .chain(
-        (meta) => checkNamespaceExists(meta, bucket),
-      )
+      .chain((meta) => checkNamespaceExists(meta, bucket))
       .chain(() =>
         client.listObjects({
           bucket: namespacedBucket,
