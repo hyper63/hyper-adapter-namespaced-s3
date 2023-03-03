@@ -30,7 +30,7 @@
 `hyper.config.js`
 
 ```js
-import { default as s3 } from 'https://x.nest.land/hyper-adapter-namespaced-s3@0.0.3/mod.js'
+import { default as s3 } from 'https://x.nest.land/hyper-adapter-namespaced-s3@2.2.1/mod.js'
 
 export default {
   app: opine,
@@ -62,7 +62,7 @@ Alternatively, you can provide the access key, secret key, and region as argumen
 factory function:
 
 ```js
-import { default as s3 } from 'https://x.nest.land/hyper-adapter-namespaced-s3@0.0.3/mod.js'
+import { default as s3 } from 'https://x.nest.land/hyper-adapter-namespaced-s3@2.2.1/mod.js'
 
 export default {
   app: opine,
@@ -99,7 +99,7 @@ This is a Deno module available to import from
 deps.js
 
 ```js
-export { default as s3 } from 'https://x.nest.land/hyper-adapter-namespaced-s3@0.0.3/mod.js'
+export { default as s3 } from 'https://x.nest.land/hyper-adapter-namespaced-s3@2.2.1/mod.js'
 ```
 
 ## Features
@@ -127,7 +127,7 @@ Contributions are welcome! See the hyper
 ## Testing
 
 ```
-./scripts/test.sh
+deno task test
 ```
 
 To lint, check formatting, and run unit tests
