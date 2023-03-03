@@ -1,5 +1,5 @@
 {
-  "$schema": "https://x.nest.land/eggs@0.3.8/src/schema.json",
+  "$schema": "https://x.nest.land/eggs@0.3.10/src/schema.json",
   "name": "hyper-adapter-namespaced-s3",
   "entry": "./mod.js",
   "description": "Hyper Storage port adapter for aws s3 that uses a single namespaced s3 bucket",
