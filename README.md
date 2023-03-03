@@ -3,7 +3,7 @@
 </p>
 <p align="center">
   <a href="https://nest.land/package/hyper-adapter-namespaced-s3"><img src="https://nest.land/badge.svg" alt="Nest Badge" /></a>
-  <a href="https://github.com/hyper63/hyper-adapter-namespaced-s3/actions/workflows/test.yml"><img src="https://github.com/hyper63/hyper-adapter-namespaced-s3/actions/workflows/test.yml/badge.svg" alt="Test" /></a>
+  <a href="https://github.com/hyper63/hyper-adapter-namespaced-s3/actions/workflows/test-and-publish.yml"><img src="https://github.com/hyper63/hyper-adapter-namespaced-s3/actions/workflows/test.yml/badge.svg" alt="Test" /></a>
   <a href="https://github.com/hyper63/hyper-adapter-namespaced-s3/tags/"><img src="https://img.shields.io/github/tag/hyper63/hyper-adapter-namespaced-s3" alt="Current Version" /></a>
 </p>
 
