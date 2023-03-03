@@ -539,13 +539,29 @@ test('adapter', async (t) => {
         },
       )
 
-      await t.step('rejects with Error if fail to getObject', async () => {
+      await t.step('resolves with HyperErr is object is not found', async () => {
         const original = s3.getObject
         s3.getObject = ({ Key }) => {
           if (Key === 'meta.json') {
             return original()
           }
+          return Promise.reject(new Error('NoSuchKey'))
+        }
 
+        const err = await adapter.getObject({
+          bucket: existingNamespace,
+          object: 'bar.jpg',
+        })
+        assertObjectMatch(err, { ok: false, status: 404, msg: 'object not found' })
+        s3.getObject = original
+      })
+
+      await t.step('rejects with Error on unknown error', async () => {
+        const original = s3.getObject
+        s3.getObject = ({ Key }) => {
+          if (Key === 'meta.json') {
+            return original()
+          }
           return Promise.reject(new Error('foo'))
         }
 
