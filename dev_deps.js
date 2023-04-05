@@ -8,5 +8,5 @@ export {
   assertEquals,
   assertObjectMatch,
   assertThrows,
-} from 'https://deno.land/std@0.178.0/testing/asserts.ts'
-export { spy } from 'https://deno.land/std@0.178.0/testing/mock.ts'
+} from 'https://deno.land/std@0.182.0/testing/asserts.ts'
+export { spy } from 'https://deno.land/std@0.182.0/testing/mock.ts'
