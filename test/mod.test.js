@@ -95,6 +95,7 @@ test('mod', async (t) => {
             getCredentials: () => Promise.resolve(),
           },
           getSignedUrl: () => Promise.resolve(),
+          managedUpload: () => Promise.resolve(),
         },
       })()
 

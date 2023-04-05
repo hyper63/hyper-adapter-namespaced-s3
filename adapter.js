@@ -1,4 +1,4 @@
-import { Buffer, crocks, HyperErr, join, R, readAll } from './deps.js'
+import { crocks, HyperErr, join, R } from './deps.js'
 
 import * as lib from './lib/s3.js'
 
@@ -18,7 +18,6 @@ const {
   propEq,
   map,
   identity,
-  path,
   has,
   ifElse,
   isNil,
@@ -96,10 +95,20 @@ export default function (bucketPrefix, aws) {
     makeBucket: asyncifyHandle(lib.makeBucket(s3)),
     headBucket: asyncifyHandle(lib.headBucket(s3)),
     listBuckets: asyncifyHandle(lib.listBuckets(s3)),
-    putObject: asyncifyHandle(lib.putObject(s3)),
+    /**
+     * Wrap separate managed upload using same pattern,
+     * as if it were part of the s3 client
+     */
+    putObject: asyncifyHandle(lib.putObject({
+      managedUpload: (args) => aws.managedUpload(s3, args),
+    })),
     removeObject: asyncifyHandle(lib.removeObject(s3)),
     removeObjects: asyncifyHandle(lib.removeObjects(s3)),
     getObject: asyncifyHandle(lib.getObject(s3)),
+    /**
+     * Wrap separate getSignedUrl using same pattern,
+     * as if it were part of the s3 client
+     */
     getSignedUrl: asyncifyHandle(lib.getSignedUrl({ getSignedUrl })),
     listObjects: asyncifyHandle(lib.listObjects(s3)),
   }
@@ -149,7 +158,11 @@ export default function (bucketPrefix, aws) {
             // Found
             (r) =>
               Async.of(r)
-                .map((r) => JSON.parse(new TextDecoder().decode(r.Body))),
+                /**
+                 * Body is a ReadableStream, so we use Response to
+                 * buffer the stream and then parse it as json using json()
+                 */
+                .chain(Async.fromPromise((r) => new Response(r.Body).json())),
           )
       )
   }
@@ -162,7 +175,10 @@ export default function (bucketPrefix, aws) {
     return client.putObject({
       bucket: namespacedBucket,
       key: META,
-      body: JSON.stringify(meta),
+      /**
+       * use Response to get a ReadableStream of the JSON
+       */
+      body: new Response(JSON.stringify(meta)).body,
     })
   }
 
@@ -236,20 +252,11 @@ export default function (bucketPrefix, aws) {
 
     if (!useSignedUrl) {
       return Async.of(stream)
-        /**
-         * TODO: use the new managedUpload api which will accept a
-         * stream, buffers into chunks and then uploads to s3 as a multipart upload
-         * which would help with large files ie. >5MB and also prevent us
-         * from reading the stream into a buffer here
-         *
-         * See: https://github.com/cloudydeno/deno-aws_api/pull/31
-         */
-        .chain(Async.fromPromise(readAll))
-        .chain((arrBuffer) =>
+        .chain((stream) =>
           client.putObject({
             bucket: namespacedBucket,
             key,
-            body: arrBuffer,
+            body: stream,
           })
         )
         .map(always({ ok: true }))
@@ -282,10 +289,7 @@ export default function (bucketPrefix, aws) {
             : Async.Rejected(err) // Some other error
         },
         // Found
-        (r) =>
-          Async.of(r)
-            .map(path(['Body', 'buffer']))
-            .map((arrayBuffer) => new Buffer(arrayBuffer)),
+        (r) => Async.of(r).map((r) => r.Body), // ReadableStream
       )
     }
 
@@ -427,7 +431,7 @@ export default function (bucketPrefix, aws) {
 
   /**
    * @param {ObjectArgs}
-   * @returns {Promise<{ ok: false, msg?: string, status?: number } | Buffer>}
+   * @returns {Promise<{ ok: false, msg?: string, status?: number } | ReadableStream>}
    */
   function getObject({ bucket, object, useSignedUrl }) {
     return checkName(bucket)

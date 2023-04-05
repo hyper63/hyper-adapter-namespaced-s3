@@ -7,7 +7,6 @@ import {
 } from '../dev_deps.js'
 
 import adapterBuilder from '../adapter.js'
-import { Buffer } from '../deps.js'
 import { tokenErrs } from '../lib/utils.js'
 
 const resolves = (val) => () => Promise.resolve(val)
@@ -20,15 +19,12 @@ const s3 = {
   headBucket: () => Promise.reject({ code: 'Http404' }), // bucekt does not exist
   getObject: () => {
     return Promise.resolve({
-      Body: new TextEncoder().encode(
-        JSON.stringify({
-          createdAt: new Date().toISOString(),
-          [existingNamespace]: { createdAt: new Date() },
-        }),
-      ),
+      Body: new Response(JSON.stringify({
+        createdAt: new Date().toISOString(),
+        [existingNamespace]: { createdAt: new Date() },
+      })).body,
     })
   },
-  putObject: () => Promise.resolve(),
 }
 
 const credentialProvider = {
@@ -41,11 +37,13 @@ const credentialProvider = {
     }),
 }
 
-const adapter = adapterBuilder('foo', {
+const mockAws = {
   s3,
   credentialProvider,
   getSignedUrl: () => Promise.resolve('https://foo.bar'),
-})
+  managedUpload: () => Promise.resolve(),
+}
+const adapter = adapterBuilder('foo', mockAws)
 
 const { test } = Deno
 
@@ -128,14 +126,14 @@ test('adapter', async (t) => {
         async () => {
           const original = s3.getObject
           s3.getObject = () => Promise.reject(new Error('NoSuchKey - found'))
-          s3.putObject = spy(resolves())
+          mockAws.managedUpload = spy(resolves())
 
           await adapter.makeBucket('no_foo')
 
           // first call is to create the meta object
-          let { Body } = s3.putObject.calls.shift().args.pop()
+          let { Body } = mockAws.managedUpload.calls.shift().args.pop()
 
-          Body = JSON.parse(Body)
+          Body = await new Response(Body).json()
 
           assert(Body.createdAt)
 
@@ -145,13 +143,13 @@ test('adapter', async (t) => {
       )
 
       await t.step('updates the meta document', async () => {
-        s3.putObject = spy(resolves())
+        mockAws.managedUpload = spy(resolves())
 
         await adapter.makeBucket('new')
 
-        let { Body } = s3.putObject.calls.shift().args.pop()
+        let { Body } = mockAws.managedUpload.calls.shift().args.pop()
 
-        Body = JSON.parse(Body)
+        Body = await new Response(Body).json()
 
         assert(Body.new.createdAt)
         assert(!Body.new.deletedAt)
@@ -220,13 +218,13 @@ test('adapter', async (t) => {
             }),
           )
           s3.deleteObjects = spy(resolves())
-          s3.putObject = spy(resolves())
+          mockAws.managedUpload = spy(resolves())
 
           await adapter.removeBucket(existingNamespace)
 
-          let { Body } = s3.putObject.calls.shift().args.pop()
+          let { Body } = mockAws.managedUpload.calls.shift().args.pop()
 
-          Body = JSON.parse(Body)
+          Body = await new Response(Body).json()
 
           assert(Body[existingNamespace].createdAt)
           assert(Body[existingNamespace].deletedAt)
@@ -354,17 +352,15 @@ test('adapter', async (t) => {
         const original = s3.getObject
         s3.getObject = () =>
           Promise.resolve({
-            Body: new TextEncoder().encode(
-              JSON.stringify({
+            Body: new Response(JSON.stringify({
+              createdAt: new Date().toISOString(),
+              foo: { createdAt: new Date().toISOString() },
+              bar: { createdAt: new Date().toISOString() },
+              fizz: {
                 createdAt: new Date().toISOString(),
-                foo: { createdAt: new Date().toISOString() },
-                bar: { createdAt: new Date().toISOString() },
-                fizz: {
-                  createdAt: new Date().toISOString(),
-                  deletedAt: new Date().toISOString(),
-                },
-              }),
-            ),
+                deletedAt: new Date().toISOString(),
+              },
+            })).body,
           })
 
         const res = await adapter.listBuckets()
@@ -395,37 +391,37 @@ test('adapter', async (t) => {
 
   await t.step('object', async (t) => {
     await t.step('passes the correct prefix', async () => {
-      s3.putObject = spy(({ body }) => Promise.resolve(body))
+      mockAws.managedUpload = spy(({ body }) => Promise.resolve(body))
 
       await adapter.putObject({
         bucket: existingNamespace,
         object: '/fizz/buzz/bar.jpg',
-        stream: new Buffer(new Uint8Array(4).buffer),
+        stream: new Response(new Uint8Array(4)).body,
       })
 
       // no leading slash
       await adapter.putObject({
         bucket: existingNamespace,
         object: 'buzz/bar.jpg',
-        stream: new Buffer(new Uint8Array(4).buffer),
+        stream: new Response(new Uint8Array(4)).body,
       })
 
-      assertObjectMatch(s3.putObject.calls.shift(), {
-        args: [{ Key: `${existingNamespace}/fizz/buzz/bar.jpg` }],
+      assertObjectMatch(mockAws.managedUpload.calls.shift().args.pop(), {
+        Key: `${existingNamespace}/fizz/buzz/bar.jpg`,
       })
 
-      assertObjectMatch(s3.putObject.calls.shift(), {
-        args: [{ Key: `${existingNamespace}/buzz/bar.jpg` }],
+      assertObjectMatch(mockAws.managedUpload.calls.shift().args.pop(), {
+        Key: `${existingNamespace}/buzz/bar.jpg`,
       })
     })
 
     await t.step('resolves with HyperErr if name is invalid', async () => {
-      s3.putObject = spy(({ body }) => Promise.resolve(body))
+      mockAws.managedUpload = spy(({ body }) => Promise.resolve(body))
 
       const err = await adapter.putObject({
         bucket: existingNamespace,
         object: '/foo/bar/../bar.jpg',
-        stream: new Buffer(new Uint8Array(4).buffer),
+        stream: new Response(new Uint8Array(4)).body,
       })
 
       assertEquals(err.ok, false)
@@ -434,12 +430,12 @@ test('adapter', async (t) => {
 
     await t.step('putObject', async (t) => {
       await t.step('return the correct shape', async () => {
-        s3.putObject = spy(({ body }) => Promise.resolve(body))
+        mockAws.managedUpload = spy(({ body }) => Promise.resolve(body))
 
         const res = await adapter.putObject({
           bucket: existingNamespace,
           object: 'bar.jpg',
-          stream: new Buffer(new Uint8Array(4).buffer),
+          stream: new Response(new Uint8Array(4)).body,
         })
 
         assert(res.ok)
@@ -460,13 +456,13 @@ test('adapter', async (t) => {
       )
 
       await t.step('rejects with Error if fail to putObject', async () => {
-        s3.putObject = spy(rejects(new Error('foo')))
+        mockAws.managedUpload = spy(rejects(new Error('foo')))
 
         try {
           await adapter.putObject({
             bucket: existingNamespace,
             object: 'bar.jpg',
-            stream: new Buffer(new Uint8Array(4).buffer),
+            stream: new Response(new Uint8Array(4)).body,
           })
           assert(false)
         } catch (err) {
@@ -503,7 +499,7 @@ test('adapter', async (t) => {
 
     await t.step('getObject', async (t) => {
       await t.step('return the correct shape', async () => {
-        const reader = new Buffer(new Uint8Array(4))
+        const readableStream = new Response(new Uint8Array(4)).body
 
         const original = s3.getObject
         s3.getObject = ({ Key }) => {
@@ -511,7 +507,7 @@ test('adapter', async (t) => {
             return original()
           }
 
-          return Promise.resolve({ Body: { buffer: reader } })
+          return Promise.resolve({ Body: readableStream })
         }
 
         const res = await adapter.getObject({
@@ -519,8 +515,7 @@ test('adapter', async (t) => {
           object: 'bar.jpg',
         })
 
-        assert(res.read)
-        assertEquals(res.length, reader.length)
+        assertEquals(res.length, readableStream.length)
 
         s3.getObject = original
       })

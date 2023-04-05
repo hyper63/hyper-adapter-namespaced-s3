@@ -56,12 +56,15 @@ test('s3', async (t) => {
     // const body = new Uint8Array();
     const body = {}
 
-    s3.putObject = spy(resolves())
+    const mockManagedUpload = spy(resolves())
+    const mockS3 = { managedUpload: mockManagedUpload }
 
-    await putObject(s3)({ bucket, key, body })
+    await putObject(mockS3)({ bucket, key, body })
 
-    assertObjectMatch(s3.putObject.calls.shift(), {
-      args: [{ Bucket: bucket, Key: key, Body: body }],
+    assertObjectMatch(mockManagedUpload.calls.shift().args.pop(), {
+      Bucket: bucket,
+      Key: key,
+      Body: body,
     })
   })
 
