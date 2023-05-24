@@ -1,17 +1,14 @@
 {
   "tasks": {
     "test": "deno lint && deno fmt --check && deno test -A --no-check",
-    "cache": "deno cache --lock=deno.lock --lock-write deps.js dev_deps.js test/harness.js",
-    "harness": "deno run --no-check --unstable -A ./test/harness.js"
+    "cache": "deno cache --lock=deno.lock --lock-write deps.js dev_deps.js test/hyper.js",
+    "test:harness": "deno run --no-check --unstable -A ./test/hyper.js"
   },
   "fmt": {
-    "files": {
-      "include": ["./"]
-    },
-    "options": {
-      "lineWidth": 100,
-      "singleQuote": true,
-      "semiColons": false
-    }
+    "include": ["./"],
+    "exclude": ["./CHANGELOG.md"],
+    "lineWidth": 100,
+    "singleQuote": true,
+    "semiColons": false
   }
 }

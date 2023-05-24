@@ -1,6 +1,6 @@
 // Schema parsing deps
-export { default as validateFactorySchema } from 'https://x.nest.land/hyper@3.4.2/utils/plugin-schema.js'
-export { storage as validateStorageAdapterSchema } from 'https://x.nest.land/hyper-port-storage@1.3.0/mod.js'
+export { default as validateFactorySchema } from 'https://raw.githubusercontent.com/hyper63/hyper/hyper%40v4.0.1/packages/core/utils/plugin-schema.ts'
+export { storage as validateStorageAdapterSchema } from 'https://raw.githubusercontent.com/hyper63/hyper/hyper-port-storage%40v2.0.1/packages/port-storage/mod.ts'
 
 // std lib deps
 export {
@@ -8,5 +8,5 @@ export {
   assertEquals,
   assertObjectMatch,
   assertThrows,
-} from 'https://deno.land/std@0.182.0/testing/asserts.ts'
-export { spy } from 'https://deno.land/std@0.182.0/testing/mock.ts'
+} from 'https://deno.land/std@0.187.0/testing/asserts.ts'
+export { spy } from 'https://deno.land/std@0.187.0/testing/mock.ts'
